@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useSession } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Loader2, Trash2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +19,34 @@ interface Note {
 
 export default function NotesPage() {
     const { userId, isLoaded } = useAuth();
+    const { session } = useSession();
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const createAuthenticatedClient = useCallback(async () => {
+        const supabaseToken = await session?.getToken({ template: 'supabase' });
+
+        return createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${supabaseToken}`,
+                    },
+                },
+            }
+        );
+    }, [session]);
+
     const fetchNotes = useCallback(async () => {
-        if (!userId || !supabase) return;
+        if (!userId || !session) return;
 
         try {
             setLoading(true);
-            const { data, error } = await supabase!
+            const supabase = await createAuthenticatedClient();
+
+            const { data, error } = await supabase
                 .from('notes')
                 .select('*')
                 .eq('user_id', userId)
@@ -40,24 +59,24 @@ export default function NotesPage() {
         } finally {
             setLoading(false);
         }
-    }, [userId]);
+    }, [userId, session, createAuthenticatedClient]);
 
     useEffect(() => {
-        if (isLoaded && userId) {
+        if (isLoaded && userId && session) {
             const timer = setTimeout(() => {
                 fetchNotes();
             }, 0);
             return () => clearTimeout(timer);
         }
-    }, [isLoaded, userId, fetchNotes]);
-
-
+    }, [isLoaded, userId, session, fetchNotes]);
 
     const deleteNote = async (id: string) => {
-        if (!supabase || !userId) return;
+        if (!userId || !session) return;
 
         try {
-            const { error } = await (supabase as any)
+            const supabase = await createAuthenticatedClient();
+
+            const { error } = await supabase
                 .from('notes')
                 .delete()
                 .eq('id', id)

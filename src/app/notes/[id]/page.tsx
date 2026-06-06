@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useSession } from '@clerk/nextjs';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichEditor } from '@/components/RichEditor';
 import { Loader2, Save, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,7 @@ interface Note {
 
 export default function NoteEditorPage() {
     const { userId, isLoaded } = useAuth();
+    const { session } = useSession();
     const router = useRouter();
     const params = useParams();
     const noteId = params.id as string;
@@ -30,10 +31,28 @@ export default function NoteEditorPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    const createAuthenticatedClient = useCallback(async () => {
+        const supabaseToken = await session?.getToken({ template: 'supabase' });
+
+        return createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                global: {
+                    headers: {
+                        Authorization: `Bearer ${supabaseToken}`,
+                    },
+                },
+            }
+        );
+    }, [session]);
+
     const fetchNote = useCallback(async () => {
-        if (!userId || !noteId || noteId === 'new' || !supabase) return;
+        if (!userId || !session || !noteId || noteId === 'new') return;
 
         try {
+            const supabase = await createAuthenticatedClient();
+
             const { data, error } = await supabase
                 .from('notes')
                 .select('*')
@@ -53,7 +72,7 @@ export default function NoteEditorPage() {
         } finally {
             setLoading(false);
         }
-    }, [noteId, userId, router]);
+    }, [noteId, userId, session, router, createAuthenticatedClient]);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -61,13 +80,13 @@ export default function NoteEditorPage() {
         if (noteId === 'new') {
             const timer = setTimeout(() => setLoading(false), 0);
             return () => clearTimeout(timer);
-        } else if (userId && noteId) {
+        } else if (userId && session && noteId) {
             const timer = setTimeout(() => {
                 fetchNote();
             }, 0);
             return () => clearTimeout(timer);
         }
-    }, [isLoaded, userId, noteId, fetchNote]);
+    }, [isLoaded, userId, session, noteId, fetchNote]);
 
     const saveNote = async () => {
         if (!title.trim() && !content.trim()) {
@@ -75,13 +94,14 @@ export default function NoteEditorPage() {
             return;
         }
 
-        if (!supabase || !userId) {
-            alert('Database connection failed');
+        if (!userId || !session) {
+            alert('Authentication failed. Please sign in again.');
             return;
         }
 
         try {
             setSaving(true);
+            const supabase = await createAuthenticatedClient();
 
             if (noteId === 'new') {
                 // Create new note
@@ -90,7 +110,8 @@ export default function NoteEditorPage() {
                     title: title || 'Untitled',
                     content,
                 };
-                const { data, error } = await (supabase as any)
+
+                const { data, error } = await supabase
                     .from('notes')
                     .insert(insertData)
                     .select()
@@ -106,11 +127,12 @@ export default function NoteEditorPage() {
                     content,
                     updated_at: new Date().toISOString(),
                 };
-                const { error } = await (supabase as any)
+
+                const { error } = await supabase
                     .from('notes')
                     .update(updateData)
                     .eq('id', noteId)
-                    .eq('user_id', userId!);
+                    .eq('user_id', userId);
 
                 if (error) throw error;
                 router.refresh();
