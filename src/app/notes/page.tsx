@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth, useSession } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, BookOpen, Plus } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,57 +92,78 @@ export default function NotesPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[50vh]">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
             </div>
         );
     }
 
     return (
-        <div className="p-8">
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">Your Notes</h1>
-                <p className="text-gray-600">Manage and organize all your notes in one place</p>
+        <div className="p-8 max-w-7xl mx-auto">
+            {/* Header section styled to match the new theme */}
+            <div className="mb-10">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">Your Notes</h1>
+                <p className="text-slate-600 text-lg">Manage and organize all your notes in one place.</p>
             </div>
 
             {notes.length === 0 ? (
-                <div className="text-center py-16">
-                    <p className="text-xl text-gray-500 mb-4">No notes yet. Create your first one!</p>
+                // Premium empty state design
+                <div className="text-center py-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <BookOpen className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">No notes yet</h3>
+                    <p className="text-slate-500 mb-8 max-w-sm mx-auto">Capture your first thought. Create a note to get started.</p>
                     <Link href="/notes/new" className="inline-block">
-                        <button className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 text-base rounded-xl shadow-sm gap-2">
+                            <Plus className="w-5 h-5" />
                             Create Note
-                        </button>
+                        </Button>
                     </Link>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {notes.map((note) => (
-                        <Link key={note.id} href={`/notes/${note.id}`}>
-                            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
-                                <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">
-                                    {note.title || 'Untitled'}
-                                </h3>
-                                <p className="text-gray-600 text-sm line-clamp-3 flex-1 mb-4">
-                                    {note.content || 'No content yet'}
-                                </p>
-                                <div className="flex items-center justify-between text-xs text-gray-500">
-                                    <span>
-                                        {new Date(note.updated_at).toLocaleDateString()}
-                                    </span>
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            deleteNote(note.id);
-                                        }}
-                                        className="text-red-500 hover:text-red-700 transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </Card>
-                        </Link>
-                    ))}
+                    {notes.map((note) => {
+                        // Strip HTML tags and common entities for a clean plain-text preview
+                        const cleanPreview = note.content
+                            ? note.content.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')
+                            : 'No content yet';
+
+                        return (
+                            <Link key={note.id} href={`/notes/${note.id}`}>
+                                <Card className="p-6 bg-white border-slate-200 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
+                                    <h3 className="text-xl font-bold text-slate-900 mb-3 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                                        {note.title || 'Untitled'}
+                                    </h3>
+                                    <p className="text-slate-500 text-sm line-clamp-3 flex-1 mb-6 leading-relaxed">
+                                        {cleanPreview}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
+                                        <span className="text-xs font-medium text-slate-400">
+                                            {new Date(note.updated_at).toLocaleDateString(undefined, {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })}
+                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (window.confirm("Are you sure you want to delete this note?")) {
+                                                    deleteNote(note.id);
+                                                }
+                                            }}
+                                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-md transition-colors"
+                                            aria-label="Delete note"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </Card>
+                            </Link>
+                        );
+                    })}
                 </div>
             )}
         </div>

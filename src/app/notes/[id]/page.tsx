@@ -154,46 +154,49 @@ export default function NoteEditorPage() {
     }
 
     return (
-        <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="border-b border-gray-200 bg-white p-6 flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1">
+        <div className="h-full flex flex-col bg-white">
+            {/* Header - Made sticky with a subtle blur, aligned with editor content */}
+            <div className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1 max-w-4xl mx-auto w-full">
                     <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
+                        className="text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900 shrink-0"
                         onClick={() => router.push('/notes')}
                     >
                         <ArrowLeft className="w-4 h-4" />
                     </Button>
+
                     <Input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Note title..."
-                        className="text-2xl font-bold border-none focus-visible:ring-0 h-auto px-0"
+                        placeholder="Untitled Note"
+                        className="text-2xl md:text-3xl font-extrabold text-slate-900 placeholder:text-slate-300 border-none focus-visible:ring-0 h-auto px-0 bg-transparent"
                     />
+
+                    <Button
+                        onClick={saveNote}
+                        disabled={saving}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2 shrink-0 ml-4"
+                    >
+                        {saving ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span className="hidden sm:inline">Saving...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Save className="w-4 h-4" />
+                                <span className="hidden sm:inline">Save Note</span>
+                            </>
+                        )}
+                    </Button>
                 </div>
-                <Button
-                    onClick={saveNote}
-                    disabled={saving}
-                    className="bg-indigo-600 hover:bg-indigo-700 gap-2"
-                >
-                    {saving ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <Save className="w-4 h-4" />
-                            Save
-                        </>
-                    )}
-                </Button>
             </div>
 
-            {/* Editor */}
-            <div className="flex-1 overflow-auto p-6">
-                <div className="max-w-4xl mx-auto">
+            {/* Editor Container */}
+            <div className="flex-1 overflow-auto">
+                <div className="max-w-4xl mx-auto w-full h-full">
                     <RichEditor value={content} onChange={setContent} />
                 </div>
             </div>
