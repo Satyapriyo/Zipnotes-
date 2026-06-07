@@ -33,7 +33,7 @@ export default function NotesLayout({
 
                 {/* Header / App Name - Perfectly matched to Landing Page */}
                 <div className="h-16 flex items-center px-4 border-b border-slate-200">
-                    <Link href="/notes" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <div className="bg-indigo-600 p-1.5 rounded-lg">
                             <BookOpen className="w-5 h-5 text-white" />
                         </div>
