@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, BookOpen, LayoutGrid } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Plus, BookOpen, LayoutGrid, Menu, X, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
@@ -17,6 +19,14 @@ export default function NotesLayout({
 }) {
     const pathname = usePathname();
     const { user, isLoaded } = useUser();
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Prevent hydration mismatch for the theme toggle
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const navItems = [
         {
@@ -26,25 +36,59 @@ export default function NotesLayout({
         },
     ];
 
-    return (
-        <div className={cn("h-screen flex overflow-hidden bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900", font.className)}>
-            {/* Sidebar */}
-            <aside className="w-64 bg-slate-50 border-r border-slate-200 flex flex-col transition-all">
+    // Close mobile menu when a navigation item is clicked
+    const handleNavClick = () => {
+        setIsMobileMenuOpen(false);
+    };
 
-                {/* Header / App Name - Perfectly matched to Landing Page */}
-                <div className="h-16 flex items-center px-4 border-b border-slate-200">
-                    <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+    return (
+        <div className={cn("h-screen flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900/50 dark:selection:text-indigo-100", font.className)}>
+
+            {/* Mobile Header (Visible only on small screens) */}
+            <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0 z-40">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300">
+                        <Menu className="w-6 h-6" />
+                    </Button>
+                    <div className="bg-indigo-600 p-1.5 rounded-lg ml-1">
+                        <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">ZipNotes</span>
+                </div>
+                <UserButton />
+            </header>
+
+            {/* Mobile Sidebar Overlay */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={cn(
+                "fixed inset-y-0 left-0 z-50 w-64 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
+                isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+            )}>
+
+                {/* Header / App Name */}
+                <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+                    <Link href="/" onClick={handleNavClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <div className="bg-indigo-600 p-1.5 rounded-lg">
                             <BookOpen className="w-5 h-5 text-white" />
                         </div>
-
-                        <span className="font-bold text-xl tracking-tight text-slate-900">ZipNotes</span>
+                        <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">ZipNotes</span>
                     </Link>
+                    {/* Close button for mobile */}
+                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-500">
+                        <X className="w-5 h-5" />
+                    </Button>
                 </div>
 
                 {/* New Note Action */}
-                <div className="p-4">
-                    <Link href="/notes/new">
+                <div className="p-4 shrink-0">
+                    <Link href="/notes/new" onClick={handleNavClick}>
                         <Button className="w-full justify-start gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" size="sm">
                             <Plus className="w-4 h-4" />
                             New Note
@@ -57,18 +101,18 @@ export default function NotesLayout({
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         return (
-                            <Link key={item.href} href={item.href}>
+                            <Link key={item.href} href={item.href} onClick={handleNavClick}>
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "w-full justify-start gap-3 mb-1",
+                                        "w-full justify-start gap-3 mb-1 transition-colors",
                                         isActive
-                                            ? "bg-indigo-50 text-indigo-700 font-medium hover:bg-indigo-100 hover:text-indigo-800"
-                                            : "text-slate-600 font-normal hover:bg-slate-100 hover:text-slate-900"
+                                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+                                            : "text-slate-600 dark:text-slate-400 font-normal hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                                     )}
                                     size="sm"
                                 >
-                                    <item.icon className={cn("w-4 h-4", isActive ? "text-indigo-600" : "text-slate-400")} />
+                                    <item.icon className={cn("w-4 h-4", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500")} />
                                     {item.title}
                                 </Button>
                             </Link>
@@ -76,25 +120,53 @@ export default function NotesLayout({
                     })}
                 </nav>
 
-                {/* User Profile Footer */}
-                <div className="p-4 border-t border-slate-200">
-                    <div className="flex items-center gap-3 px-2 py-2 w-full hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
-                        <UserButton />
-                        <div className="flex flex-col overflow-hidden">
-                            <span className="text-sm font-medium text-slate-900 truncate">
-                                {isLoaded && user ? user.firstName || 'User' : 'Loading...'}
-                            </span>
-                            <span className="text-xs text-slate-500 truncate">
-                                My Account
-                            </span>
+                {/* Theme Toggle & User Profile Footer */}
+                <div className="mt-auto shrink-0 border-t border-slate-200 dark:border-slate-800">
+
+                    {/* Dark Mode Toggle */}
+                    <div className="p-4 pb-2">
+                        {mounted && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start gap-3 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800"
+                                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            >
+                                {theme === 'dark' ? (
+                                    <>
+                                        <Sun className="w-4 h-4 text-amber-500" />
+                                        Light Mode
+                                    </>
+                                ) : (
+                                    <>
+                                        <Moon className="w-4 h-4 text-indigo-600" />
+                                        Dark Mode
+                                    </>
+                                )}
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* User Profile */}
+                    <div className="p-4 pt-2">
+                        <div className="flex items-center gap-3 px-2 py-2 w-full hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer">
+                            <UserButton />
+                            <div className="flex flex-col overflow-hidden">
+                                <span className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">
+                                    {isLoaded && user ? user.firstName || 'User' : 'Loading...'}
+                                </span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    My Account
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
             </aside>
 
-            {/* Main Content - Made pure white to contrast with the slate sidebar */}
-            <main className="flex-1 overflow-y-auto bg-white shadow-[-8px_0_15px_-3px_rgba(0,0,0,0.02)]">
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto bg-white dark:bg-[#0B1120] shadow-[-8px_0_15px_-3px_rgba(0,0,0,0.02)] md:rounded-tl-2xl border-l border-slate-200 dark:border-slate-800 relative z-0">
                 {children}
             </main>
         </div>

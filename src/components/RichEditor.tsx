@@ -1,7 +1,9 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Extension } from '@tiptap/react';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Markdown } from '@tiptap/markdown';
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -11,20 +13,55 @@ import { Button } from '@/components/ui/button';
 import { useAuth, useSession } from '@clerk/nextjs';
 import { createClient } from '@supabase/supabase-js';
 import {
-    Bold,
-    Italic,
-    Strikethrough,
-    Code,
-    Heading2,
-    Heading3,
-    Link as LinkIcon,
-    List,
-    ListOrdered,
-    Quote,
-    Paperclip,
-    Loader2
+    Bold, Italic, Strikethrough, Code, Heading2, Heading3,
+    Link as LinkIcon, List, ListOrdered, Quote, Paperclip, Loader2
 } from 'lucide-react';
 import '@/styles/editor.css';
+
+// --- 1. Helper to detect if pasted text is Markdown ---
+function looksLikeMarkdown(text: string): boolean {
+    return (
+        /^#{1,6}\s/m.test(text) || // Headings
+        /\*\*[^*]+\*\*/.test(text) || // Bold
+        /\*[^*]+\*/.test(text) || // Italic
+        /\[.+\]\(.+\)/.test(text) || // Links
+        /^\s*[-*+]\s/m.test(text) || // Unordered lists
+        /^\s*\d+\.\s/m.test(text) || // Ordered lists
+        /^\s*>\s/m.test(text) || // Blockquotes
+        /`[^`]+`/.test(text) || // Inline code
+        /^```/m.test(text) // Code blocks
+    );
+}
+
+// --- 2. Custom Interceptor to handle Markdown Pasting ---
+const PasteMarkdown = Extension.create({
+    name: 'pasteMarkdown',
+    addProseMirrorPlugins() {
+        const { editor } = this;
+        return [
+            new Plugin({
+                key: new PluginKey('pasteMarkdown'),
+                props: {
+                    handlePaste(view, event) {
+                        const text = event.clipboardData?.getData('text/plain');
+                        const html = event.clipboardData?.getData('text/html');
+
+                        if (text && !html && looksLikeMarkdown(text)) {
+                            try {
+                                const json = (editor as any).markdown.parse(text);
+                                editor.commands.insertContentAt(view.state.selection.from, json);
+                                return true;
+                            } catch (e) {
+                                return false;
+                            }
+                        }
+                        return false;
+                    },
+                },
+            }),
+        ];
+    },
+});
 
 interface RichEditorProps {
     value: string;
@@ -40,15 +77,17 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
     const editor = useEditor({
         extensions: [
             StarterKit,
+            Markdown,
+            PasteMarkdown,
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
-                    class: 'text-indigo-600 underline cursor-pointer decoration-indigo-300 underline-offset-2',
+                    class: 'text-indigo-600 dark:text-indigo-400 underline cursor-pointer decoration-indigo-300 dark:decoration-indigo-500/50 underline-offset-2',
                 },
             }),
             Image.configure({
                 HTMLAttributes: {
-                    class: 'rounded-lg border border-slate-200 max-w-full my-4 shadow-sm',
+                    class: 'rounded-lg border border-slate-200 dark:border-slate-800 max-w-full my-4 shadow-sm',
                 },
             }),
             Placeholder.configure({
@@ -60,7 +99,8 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
         immediatelyRender: false,
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[500px] text-slate-800',
+                // Ensure dark:prose-invert is here to flip text color in dark mode
+                class: 'prose dark:prose-invert prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[500px] text-slate-800 dark:text-slate-200',
             },
         },
         onUpdate: ({ editor }) => {
@@ -68,7 +108,6 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
         },
     });
 
-    // Helper to create authenticated Supabase client for storage
     const createAuthenticatedClient = useCallback(async () => {
         const supabaseToken = await session?.getToken({ template: 'supabase' });
         return createClient(
@@ -92,27 +131,21 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
             setIsUploading(true);
             const supabase = await createAuthenticatedClient();
 
-            // 1. Create a unique, URL-safe filename
             const fileExt = file.name.split('.').pop();
             const safeFileName = file.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             const uniqueFileName = `${Date.now()}_${safeFileName}.${fileExt}`;
-
-            // Organize files into folders by userId
             const filePath = `${userId}/${uniqueFileName}`;
 
-            // 2. Upload the file to the 'attachments' bucket
             const { error: uploadError } = await supabase.storage
                 .from('attachments')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            // 3. Get the public URL for the file
             const { data: { publicUrl } } = supabase.storage
                 .from('attachments')
                 .getPublicUrl(filePath);
 
-            // 4. Insert into Tiptap
             if (file.type.startsWith('image/')) {
                 editor.chain().focus().setImage({ src: publicUrl }).run();
             } else {
@@ -127,7 +160,7 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
             alert("Failed to upload attachment. Check your Supabase storage permissions.");
         } finally {
             setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -165,27 +198,27 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
                 <BubbleMenu
                     editor={editor}
                     options={{ placement: 'top' }}
-                    className="flex items-center gap-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1"
+                    className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-1"
                 >
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBold().run()} className={`h-8 w-8 p-0 ${editor.isActive('bold') ? 'bg-slate-100 text-black' : 'text-slate-600'}`}>
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBold().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('bold') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                         <Bold className="w-4 h-4" />
                     </Button>
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleItalic().run()} className={`h-8 w-8 p-0 ${editor.isActive('italic') ? 'bg-slate-100 text-black' : 'text-slate-600'}`}>
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleItalic().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('italic') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                         <Italic className="w-4 h-4" />
                     </Button>
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleStrike().run()} className={`h-8 w-8 p-0 ${editor.isActive('strike') ? 'bg-slate-100 text-black' : 'text-slate-600'}`}>
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleStrike().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('strike') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                         <Strikethrough className="w-4 h-4" />
                     </Button>
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleCode().run()} className={`h-8 w-8 p-0 ${editor.isActive('code') ? 'bg-slate-100 text-black' : 'text-slate-600'}`}>
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleCode().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('code') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
                         <Code className="w-4 h-4" />
                     </Button>
 
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
-                    <Button size="sm" variant="ghost" onClick={setLink} className={`h-8 w-8 p-0 ${editor.isActive('link') ? 'bg-blue-100 text-blue-600' : 'text-slate-600'}`}>
+                    <Button size="sm" variant="ghost" onClick={setLink} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 ${editor.isActive('link') ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
                         <LinkIcon className="w-4 h-4" />
                     </Button>
                 </BubbleMenu>
@@ -196,41 +229,41 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
                 <FloatingMenu
                     editor={editor}
                     options={{ placement: 'right' }}
-                    className="flex items-center gap-1 bg-white border border-slate-200 shadow-lg rounded-lg p-1 animate-in fade-in zoom-in-95 duration-200"
+                    className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg rounded-lg p-1 animate-in fade-in zoom-in-95 duration-200"
                 >
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-black">
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         H2
                     </Button>
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-black">
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         H3
                     </Button>
 
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBulletList().run()} className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100 hover:text-black">
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBulletList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         <List className="w-4 h-4" />
                     </Button>
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleOrderedList().run()} className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100 hover:text-black">
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleOrderedList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         <ListOrdered className="w-4 h-4" />
                     </Button>
 
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
-                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBlockquote().run()} className="h-8 w-8 p-0 text-slate-600 hover:bg-slate-100 hover:text-black">
+                    <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBlockquote().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         <Quote className="w-4 h-4" />
                     </Button>
 
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
 
-                    {/* New Attachment Button */}
+                    {/* Attachment Button */}
                     <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="h-8 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-black gap-2"
+                        className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 gap-2"
                     >
                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
                         {isUploading ? "Uploading..." : "Attach"}

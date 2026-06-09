@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     default: "ZipNotes | Simple, Affordable Cloud Notes",
-    template: "%s | ZipNotes", // Automatically adds "| ZipNotes" to other pages
+    template: "%s | ZipNotes",
   },
   description: "The secure, lightweight, and clutter-free note-taking app your office will actually allow. Join the free beta today.",
   keywords: ["note taking app", "notion alternative", "minimalist notes", "cloud notes", "office friendly notes"],
@@ -30,7 +32,7 @@ export const metadata: Metadata = {
     siteName: "ZipNotes",
     images: [
       {
-        url: "https://your-domain.com/og-image.jpg", // You'll need to add an image to your public folder!
+        url: "https://your-domain.com/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "ZipNotes Preview",
@@ -52,11 +54,24 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
+      {/* 1. Add suppressHydrationWarning here */}
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        suppressHydrationWarning
       >
-        <body className="min-h-full flex flex-col">{children}</body>
+        <body className="min-h-full flex flex-col">
+          {/* 2. Configure ThemeProvider for Tailwind */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </body>
       </html>
     </ClerkProvider>
   );

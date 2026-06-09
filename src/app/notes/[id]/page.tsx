@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { RichEditor } from '@/components/RichEditor';
 import { Loader2, Save, ArrowLeft } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-
+import { toast } from "sonner"
 export const dynamic = 'force-dynamic';
 
 interface Note {
@@ -90,12 +90,12 @@ export default function NoteEditorPage() {
 
     const saveNote = async () => {
         if (!title.trim() && !content.trim()) {
-            alert('Please add some content to your note');
+            toast('Please add some content to your note');
             return;
         }
 
         if (!userId || !session) {
-            alert('Authentication failed. Please sign in again.');
+            toast('Authentication failed. Please sign in again.');
             return;
         }
 
@@ -120,6 +120,7 @@ export default function NoteEditorPage() {
                 if (error) throw error;
                 const result = data as Note;
                 router.push(`/notes/${result.id}`);
+                toast("Saved successfully.");
             } else {
                 // Update existing note
                 const updateData = {
@@ -136,6 +137,7 @@ export default function NoteEditorPage() {
 
                 if (error) throw error;
                 router.refresh();
+                toast("Updated successfully.");
             }
         } catch (error) {
             console.error('Error saving note:', error);
@@ -147,21 +149,21 @@ export default function NoteEditorPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            <div className="flex items-center justify-center h-full min-h-[50vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col bg-white">
+        <div className="h-full flex flex-col bg-white dark:bg-[#0B1120]">
             {/* Header - Made sticky with a subtle blur, aligned with editor content */}
-            <div className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1 max-w-4xl mx-auto w-full">
                     <Button
                         variant="outline"
                         size="icon"
-                        className="text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-900 shrink-0"
+                        className="text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
                         onClick={() => router.push('/notes')}
                     >
                         <ArrowLeft className="w-4 h-4" />
@@ -171,7 +173,7 @@ export default function NoteEditorPage() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Untitled Note"
-                        className="text-2xl md:text-3xl font-extrabold text-slate-900 placeholder:text-slate-300 border-none focus-visible:ring-0 h-auto px-0 bg-transparent"
+                        className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-transparent"
                     />
 
                     <Button

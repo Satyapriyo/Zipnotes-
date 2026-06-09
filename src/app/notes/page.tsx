@@ -93,7 +93,7 @@ export default function NotesPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
             </div>
         );
     }
@@ -102,18 +102,18 @@ export default function NotesPage() {
         <div className="p-8 max-w-7xl mx-auto">
             {/* Header section styled to match the new theme */}
             <div className="mb-10">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">Your Notes</h1>
-                <p className="text-slate-600 text-lg">Manage and organize all your notes in one place.</p>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-3">Your Notes</h1>
+                <p className="text-slate-600 dark:text-slate-400 text-lg">Manage and organize all your notes in one place.</p>
             </div>
 
             {notes.length === 0 ? (
                 // Premium empty state design
-                <div className="text-center py-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="text-center py-24 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-6">
                         <BookOpen className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">No notes yet</h3>
-                    <p className="text-slate-500 mb-8 max-w-sm mx-auto">Capture your first thought. Create a note to get started.</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No notes yet</h3>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto">Capture your first thought. Create a note to get started.</p>
                     <Link href="/notes/new" className="inline-block">
                         <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 text-base rounded-xl shadow-sm gap-2">
                             <Plus className="w-5 h-5" />
@@ -131,15 +131,15 @@ export default function NotesPage() {
 
                         return (
                             <Link key={note.id} href={`/notes/${note.id}`}>
-                                <Card className="p-6 bg-white border-slate-200 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
-                                    <h3 className="text-xl font-bold text-slate-900 mb-3 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                                <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/50 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                         {note.title || 'Untitled'}
                                     </h3>
-                                    <p className="text-slate-500 text-sm line-clamp-3 flex-1 mb-6 leading-relaxed">
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 flex-1 mb-6 leading-relaxed">
                                         {cleanPreview}
                                     </p>
-                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100">
-                                        <span className="text-xs font-medium text-slate-400">
+                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
+                                        <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
                                             {new Date(note.updated_at).toLocaleDateString(undefined, {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -154,7 +154,7 @@ export default function NotesPage() {
                                                     deleteNote(note.id);
                                                 }
                                             }}
-                                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-md transition-colors"
+                                            className="text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-md transition-colors"
                                             aria-label="Delete note"
                                         >
                                             <Trash2 className="w-4 h-4" />
