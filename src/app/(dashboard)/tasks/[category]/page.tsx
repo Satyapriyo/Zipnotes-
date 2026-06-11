@@ -1,0 +1,223 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useAuth, useSession } from '@clerk/nextjs';
+import { useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Loader2, Trash2, Plus, Check, Circle, Target, Calendar, CalendarDays } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+
+interface Task {
+    id: string;
+    title: string;
+    completed: boolean;
+    category: string;
+    created_at: string;
+}
+
+export default function TasksPage() {
+    const { userId, isLoaded } = useAuth();
+    const { session } = useSession();
+    const params = useParams();
+    const category = params.category as string; // 'today', 'weekly', or 'long-term'
+
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [adding, setAdding] = useState(false);
+
+    // Dynamic UI configuration based on the route
+    const pageConfig = {
+        'today': { title: "Today's Tasks", desc: "What needs to get done today?", icon: Calendar, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
+        'weekly': { title: "Weekly Tasks", desc: "Your priorities for this week.", icon: CalendarDays, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+        'long-term': { title: "Long-Term Goals", desc: "Big picture objectives and milestones.", icon: Target, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-500/10" },
+    }[category] || { title: "Tasks", desc: "Manage your tasks.", icon: Target, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-500/10" };
+
+    const Icon = pageConfig.icon;
+
+    const createAuthenticatedClient = useCallback(async () => {
+        const supabaseToken = await session?.getToken({ template: 'supabase' });
+        return createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { global: { headers: { Authorization: `Bearer ${supabaseToken}` } } }
+        );
+    }, [session]);
+
+    const fetchTasks = useCallback(async () => {
+        if (!userId || !session || !category) return;
+        try {
+            setLoading(true);
+            const supabase = await createAuthenticatedClient();
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('category', category)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setTasks(data || []);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [userId, session, category, createAuthenticatedClient]);
+
+    useEffect(() => {
+        if (isLoaded && userId && session) {
+            fetchTasks();
+        }
+    }, [isLoaded, userId, session, fetchTasks]);
+
+    const addTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskTitle.trim() || !userId || !session) return;
+
+        try {
+            setAdding(true);
+            const supabase = await createAuthenticatedClient();
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert({ user_id: userId, title: newTaskTitle.trim(), category })
+                .select()
+                .single();
+
+            if (error) throw error;
+            setTasks([data as Task, ...tasks]);
+            setNewTaskTitle('');
+        } catch (error) {
+            console.error('Error adding task:', error);
+        } finally {
+            setAdding(false);
+        }
+    };
+
+    const toggleTask = async (id: string, currentStatus: boolean) => {
+        try {
+            // Optimistic UI update for instant feedback
+            setTasks(tasks.map(t => t.id === id ? { ...t, completed: !currentStatus } : t));
+
+            const supabase = await createAuthenticatedClient();
+            const { error } = await supabase
+                .from('tasks')
+                .update({ completed: !currentStatus })
+                .eq('id', id)
+                .eq('user_id', userId);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error toggling task:', error);
+            fetchTasks(); // Revert on failure
+        }
+    };
+
+    const deleteTask = async (id: string) => {
+        try {
+            setTasks(tasks.filter(t => t.id !== id));
+            const supabase = await createAuthenticatedClient();
+            await supabase.from('tasks').delete().eq('id', id).eq('user_id', userId);
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            fetchTasks();
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full min-h-[50vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-8 max-w-4xl mx-auto">
+            {/* Dynamic Header */}
+            <div className="mb-10 flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${pageConfig.bg}`}>
+                    <Icon className={`w-7 h-7 ${pageConfig.color}`} />
+                </div>
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-2">{pageConfig.title}</h1>
+                    <p className="text-slate-600 dark:text-slate-400">{pageConfig.desc}</p>
+                </div>
+            </div>
+
+            {/* Add Task Form */}
+            <form onSubmit={addTask} className="mb-10 relative">
+                <Input
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    placeholder="Add a new task... (Press Enter to save)"
+                    className="h-14 pl-5 pr-32 text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500 rounded-2xl shadow-sm dark:text-white placeholder:text-slate-400"
+                    disabled={adding}
+                />
+                <Button
+                    type="submit"
+                    disabled={!newTaskTitle.trim() || adding}
+                    className="absolute right-2 top-2 bottom-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6"
+                >
+                    {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5 mr-1" />}
+                    Add
+                </Button>
+            </form>
+
+            {/* Task List */}
+            <div className="space-y-3">
+                {tasks.length === 0 ? (
+                    <div className="text-center py-16 text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                        No tasks here yet. Start typing above to add one!
+                    </div>
+                ) : (
+                    tasks.map((task) => (
+                        <div
+                            key={task.id}
+                            className={`group flex items-center justify-between p-4 bg-white dark:bg-slate-900/50 border rounded-2xl transition-all duration-200 ${task.completed
+                                ? 'border-slate-100 dark:border-slate-800/50 opacity-60'
+                                : 'border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:shadow-sm'
+                                }`}
+                        >
+                            <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleTask(task.id, task.completed)}>
+                                <button className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors shrink-0 ${task.completed
+                                    ? 'bg-indigo-500 border-indigo-500 text-white'
+                                    : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-indigo-400'
+                                    }`}>
+                                    {task.completed ? <Check className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-0" />}
+                                </button>
+
+                                <div className="flex flex-col">
+                                    <span className={`text-lg transition-all ${task.completed
+                                        ? 'line-through text-slate-400 dark:text-slate-500'
+                                        : 'text-slate-800 dark:text-slate-200'
+                                        }`}>
+                                        {task.title}
+                                    </span>
+                                    {/* Creation Timestamp */}
+                                    <span className={`text-xs mt-0.5 ${task.completed ? 'text-slate-400/50 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>
+                                        Created {new Date(task.created_at).toLocaleString(undefined, {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: 'numeric',
+                                            minute: '2-digit'
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => deleteTask(task.id)}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}

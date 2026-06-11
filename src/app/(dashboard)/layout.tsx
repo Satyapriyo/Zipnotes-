@@ -5,14 +5,14 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Plus, BookOpen, LayoutGrid, Menu, X, Moon, Sun } from "lucide-react";
+import {
+    Plus, BookOpen, LayoutGrid, Menu, X, Moon, Sun,
+    Calendar, CalendarDays, Target // <-- Added Task Icons
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Inter } from "next/font/google";
 
-const font = Inter({ subsets: ["latin"] });
-
-export default function NotesLayout({
+export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
@@ -23,28 +23,42 @@ export default function NotesLayout({
     const [mounted, setMounted] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Prevent hydration mismatch for the theme toggle
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    // ONE ARRAY TO RULE THEM ALL
     const navItems = [
         {
             title: "All Notes",
             href: "/notes",
             icon: LayoutGrid
         },
+        {
+            title: "Today's Tasks",
+            href: "/tasks/today",
+            icon: Calendar
+        },
+        {
+            title: "Weekly Tasks",
+            href: "/tasks/weekly",
+            icon: CalendarDays
+        },
+        {
+            title: "Long-Term Goals",
+            href: "/tasks/long-term",
+            icon: Target
+        },
     ];
 
-    // Close mobile menu when a navigation item is clicked
     const handleNavClick = () => {
         setIsMobileMenuOpen(false);
     };
 
     return (
-        <div className={cn("h-screen flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900/50 dark:selection:text-indigo-100", font.className)}>
+        <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900/50 dark:selection:text-indigo-100">
 
-            {/* Mobile Header (Visible only on small screens) */}
+            {/* Mobile Header */}
             <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0 z-40">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300">
@@ -66,7 +80,7 @@ export default function NotesLayout({
                 />
             )}
 
-            {/* Sidebar */}
+            {/* Sidebar Master Component */}
             <aside className={cn(
                 "fixed inset-y-0 left-0 z-50 w-64 bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
@@ -74,13 +88,12 @@ export default function NotesLayout({
 
                 {/* Header / App Name */}
                 <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                    <Link href="/" onClick={handleNavClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Link href="/notes" onClick={handleNavClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <div className="bg-indigo-600 p-1.5 rounded-lg">
                             <BookOpen className="w-5 h-5 text-white" />
                         </div>
                         <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">ZipNotes</span>
                     </Link>
-                    {/* Close button for mobile */}
                     <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-500">
                         <X className="w-5 h-5" />
                     </Button>
@@ -96,10 +109,12 @@ export default function NotesLayout({
                     </Link>
                 </div>
 
-                {/* Navigation */}
+                {/* Navigation Menu */}
                 <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href;
+                        // Check if the current path starts with the item href to keep it highlighted (e.g., /notes/123)
+                        const isActive = pathname.startsWith(item.href) || (pathname === '/notes' && item.href === '/notes');
+
                         return (
                             <Link key={item.href} href={item.href} onClick={handleNavClick}>
                                 <Button
@@ -120,7 +135,7 @@ export default function NotesLayout({
                     })}
                 </nav>
 
-                {/* Theme Toggle & User Profile Footer */}
+                {/* Footer Controls */}
                 <div className="mt-auto shrink-0 border-t border-slate-200 dark:border-slate-800">
 
                     {/* Dark Mode Toggle */}
@@ -165,7 +180,7 @@ export default function NotesLayout({
 
             </aside>
 
-            {/* Main Content */}
+            {/* Main Content Render Area */}
             <main className="flex-1 overflow-y-auto bg-white dark:bg-[#0B1120] shadow-[-8px_0_15px_-3px_rgba(0,0,0,0.02)] md:rounded-tl-2xl border-l border-slate-200 dark:border-slate-800 relative z-0">
                 {children}
             </main>
