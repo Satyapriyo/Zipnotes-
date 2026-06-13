@@ -173,7 +173,7 @@ export default function NoteEditorPage() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Untitled Note"
-                        className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-transparent"
+                        className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-white dark:bg-[#0B1120]"
                     />
 
                     <Button
