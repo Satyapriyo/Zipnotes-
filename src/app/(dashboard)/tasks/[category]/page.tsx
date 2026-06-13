@@ -5,7 +5,7 @@ import { useAuth, useSession } from '@clerk/nextjs';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, Plus, Check, Circle, Target, Calendar, CalendarDays } from 'lucide-react';
+import { Loader2, Trash2, Plus, Check, Circle, Target, Calendar, CalendarDays, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -22,14 +22,16 @@ export default function TasksPage() {
     const { userId, isLoaded } = useAuth();
     const { session } = useSession();
     const params = useParams();
-    const category = params.category as string; // 'today', 'weekly', or 'long-term'
+    const category = params.category as string;
 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
 
-    // Dynamic UI configuration based on the route
+    // NEW: State for the delete confirmation modal
+    const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+
     const pageConfig = {
         'today': { title: "Today's Tasks", desc: "What needs to get done today?", icon: Calendar, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
         'weekly': { title: "Weekly Tasks", desc: "Your priorities for this week.", icon: CalendarDays, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
@@ -99,7 +101,6 @@ export default function TasksPage() {
 
     const toggleTask = async (id: string, currentStatus: boolean) => {
         try {
-            // Optimistic UI update for instant feedback
             setTasks(tasks.map(t => t.id === id ? { ...t, completed: !currentStatus } : t));
 
             const supabase = await createAuthenticatedClient();
@@ -112,11 +113,11 @@ export default function TasksPage() {
             if (error) throw error;
         } catch (error) {
             console.error('Error toggling task:', error);
-            fetchTasks(); // Revert on failure
+            fetchTasks();
         }
     };
 
-    const deleteTask = async (id: string) => {
+    const confirmDeleteTask = async (id: string) => {
         try {
             setTasks(tasks.filter(t => t.id !== id));
             const supabase = await createAuthenticatedClient();
@@ -124,6 +125,9 @@ export default function TasksPage() {
         } catch (error) {
             console.error('Error deleting task:', error);
             fetchTasks();
+        } finally {
+            // Close the modal whether it succeeds or fails
+            setTaskToDelete(null);
         }
     };
 
@@ -136,8 +140,7 @@ export default function TasksPage() {
     }
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
-            {/* Dynamic Header */}
+        <div className="p-8 max-w-4xl mx-auto relative">
             <div className="mb-10 flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${pageConfig.bg}`}>
                     <Icon className={`w-7 h-7 ${pageConfig.color}`} />
@@ -148,7 +151,6 @@ export default function TasksPage() {
                 </div>
             </div>
 
-            {/* Add Task Form */}
             <form onSubmit={addTask} className="mb-10 relative">
                 <Input
                     value={newTaskTitle}
@@ -167,7 +169,6 @@ export default function TasksPage() {
                 </Button>
             </form>
 
-            {/* Task List */}
             <div className="space-y-3">
                 {tasks.length === 0 ? (
                     <div className="text-center py-16 text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
@@ -197,7 +198,6 @@ export default function TasksPage() {
                                         }`}>
                                         {task.title}
                                     </span>
-                                    {/* Creation Timestamp */}
                                     <span className={`text-xs mt-0.5 ${task.completed ? 'text-slate-400/50 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>
                                         Created {new Date(task.created_at).toLocaleString(undefined, {
                                             month: 'short',
@@ -209,7 +209,7 @@ export default function TasksPage() {
                                 </div>
                             </div>
                             <button
-                                onClick={() => deleteTask(task.id)}
+                                onClick={() => setTaskToDelete(task.id)} // NEW: Opens the modal instead of deleting instantly
                                 className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                             >
                                 <Trash2 className="w-4 h-4" />
@@ -218,6 +218,39 @@ export default function TasksPage() {
                     ))
                 )}
             </div>
+
+            {/* NEW: Custom Delete Confirmation Modal */}
+            {taskToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-4">
+                            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                            Delete this task?
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                            This action cannot be undone. This will permanently remove it from your list.
+                        </p>
+                        <div className="flex items-center gap-3 w-full">
+                            <Button
+                                variant="outline"
+                                className="flex-1 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                onClick={() => setTaskToDelete(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => confirmDeleteTask(taskToDelete)}
+                            >
+                                Delete Task
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

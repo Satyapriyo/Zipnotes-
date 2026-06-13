@@ -14,6 +14,7 @@ import { Inter } from "next/font/google";
 import { Calendar, CalendarDays, Target } from "lucide-react";
 const font = Inter({ subsets: ["latin"] });
 
+
 export default function NotesLayout({
     children,
 }: {

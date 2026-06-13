@@ -4,11 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth, useSession } from '@clerk/nextjs';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Loader2, Trash2, BookOpen, Plus } from 'lucide-react';
+import { Loader2, Trash2, BookOpen, Plus, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
+import { Manrope } from 'next/font/google';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
+const headingFont = Manrope({ subsets: ["latin"] });
 
 interface Note {
     id: string;
@@ -23,6 +26,9 @@ export default function NotesPage() {
     const { session } = useSession();
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // NEW: State to track which note is currently selected for deletion
+    const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
     const createAuthenticatedClient = useCallback(async () => {
         const supabaseToken = await session?.getToken({ template: 'supabase' });
@@ -87,6 +93,9 @@ export default function NotesPage() {
             setNotes(notes.filter(note => note.id !== id));
         } catch (error) {
             console.error('Error deleting note:', error);
+        } finally {
+            // Always clear the modal state after the operation finishes
+            setNoteToDelete(null);
         }
     };
 
@@ -99,10 +108,10 @@ export default function NotesPage() {
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-8 max-w-7xl mx-auto relative">
             {/* Header section styled to match the new theme */}
             <div className="mb-10">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-3">Your Notes</h1>
+                <h1 className={cn("text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-3", headingFont.className)}>Your Notes</h1>
                 <p className="text-slate-600 dark:text-slate-400 text-lg">Manage and organize all your notes in one place.</p>
             </div>
 
@@ -132,7 +141,7 @@ export default function NotesPage() {
                         return (
                             <Link key={note.id} href={`/notes/${note.id}`}>
                                 <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/50 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    <h3 className={cn("text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-3 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors", headingFont.className)}>
                                         {note.title || 'Untitled'}
                                     </h3>
                                     <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 flex-1 mb-6 leading-relaxed">
@@ -150,9 +159,8 @@ export default function NotesPage() {
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                if (window.confirm("Are you sure you want to delete this note?")) {
-                                                    deleteNote(note.id);
-                                                }
+                                                // NEW: Open the modal by setting the ID instead of window.confirm
+                                                setNoteToDelete(note.id);
                                             }}
                                             className="text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 p-2 rounded-md transition-colors"
                                             aria-label="Delete note"
@@ -164,6 +172,39 @@ export default function NotesPage() {
                             </Link>
                         );
                     })}
+                </div>
+            )}
+
+            {/* NEW: Custom Delete Confirmation Modal */}
+            {noteToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-4">
+                            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h3 className={cn("text-xl font-bold text-slate-900 dark:text-white mb-2", headingFont.className)}>
+                            Delete this note?
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                            This action cannot be undone. This will permanently delete your note from our servers.
+                        </p>
+                        <div className="flex items-center gap-3 w-full">
+                            <Button
+                                variant="outline"
+                                className="flex-1 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                onClick={() => setNoteToDelete(null)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() => deleteNote(noteToDelete)}
+                            >
+                                Delete Note
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
