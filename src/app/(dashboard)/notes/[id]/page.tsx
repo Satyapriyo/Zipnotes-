@@ -9,7 +9,11 @@ import { RichEditor } from '@/components/RichEditor';
 import { Loader2, Save, ArrowLeft } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from "sonner"
+import { Space_Grotesk } from 'next/font/google';
+import { cn } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
+
+const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
 
 interface Note {
     id: string;
@@ -150,15 +154,15 @@ export default function NoteEditorPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-lime-500 dark:text-lime-400" />
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-[#0B1120]">
+        <div className="h-full flex flex-col bg-white dark:bg-slate-900">
             {/* Header - Made sticky with a subtle blur, aligned with editor content */}
-            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
+            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1 max-w-4xl mx-auto w-full">
                     <Button
                         variant="outline"
@@ -173,13 +177,13 @@ export default function NoteEditorPage() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Untitled Note"
-                        className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-white dark:bg-[#0B1120]"
+                        className={cn("text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-white dark:bg-slate-900", display.className)}
                     />
 
                     <Button
                         onClick={saveNote}
                         disabled={saving}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm gap-2 shrink-0 ml-4"
+                        className="bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 shadow-sm gap-2 shrink-0 ml-4 font-medium"
                     >
                         {saving ? (
                             <>

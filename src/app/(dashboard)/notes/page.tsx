@@ -7,11 +7,12 @@ import { Card } from '@/components/ui/card';
 import { Loader2, Trash2, BookOpen, Plus, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import { Manrope } from 'next/font/google';
+import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
-const headingFont = Manrope({ subsets: ["latin"] });
+const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"] });
 
 interface Note {
     id: string;
@@ -102,7 +103,7 @@ export default function NotesPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-lime-500 dark:text-lime-400" />
             </div>
         );
     }
@@ -111,20 +112,20 @@ export default function NotesPage() {
         <div className="p-8 max-w-7xl mx-auto relative">
             {/* Header section styled to match the new theme */}
             <div className="mb-10">
-                <h1 className={cn("text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-3", headingFont.className)}>Your Notes</h1>
+                <h1 className={cn("text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-3", display.className)}>Your Notes</h1>
                 <p className="text-slate-600 dark:text-slate-400 text-lg">Manage and organize all your notes in one place.</p>
             </div>
 
             {notes.length === 0 ? (
                 // Premium empty state design
                 <div className="text-center py-24 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                    <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-lime-100 dark:bg-lime-400/10 text-lime-600 dark:text-lime-300 rounded-full flex items-center justify-center mx-auto mb-6">
                         <BookOpen className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No notes yet</h3>
+                    <h3 className={cn("text-xl font-semibold text-slate-900 dark:text-white mb-2", display.className)}>No notes yet</h3>
                     <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-sm mx-auto">Capture your first thought. Create a note to get started.</p>
                     <Link href="/notes/new" className="inline-block">
-                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 h-12 text-base rounded-xl shadow-sm gap-2">
+                        <Button className="bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 px-8 h-12 text-base rounded-xl shadow-sm gap-2 font-medium">
                             <Plus className="w-5 h-5" />
                             Create Note
                         </Button>
@@ -140,15 +141,15 @@ export default function NotesPage() {
 
                         return (
                             <Link key={note.id} href={`/notes/${note.id}`}>
-                                <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/50 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
-                                    <h3 className={cn("text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-3 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors", headingFont.className)}>
+                                <Card className="p-6 bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-lime-300 dark:hover:border-lime-400/50 hover:shadow-md transition-all cursor-pointer h-full flex flex-col group">
+                                    <h3 className={cn("text-xl md:text-2xl font-semibold text-slate-900 dark:text-white mb-3 line-clamp-2 group-hover:text-lime-600 dark:group-hover:text-lime-300 transition-colors", display.className)}>
                                         {note.title || 'Untitled'}
                                     </h3>
                                     <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-3 flex-1 mb-6 leading-relaxed">
                                         {cleanPreview}
                                     </p>
                                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
-                                        <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                                        <span className={cn("text-xs text-slate-400 dark:text-slate-500", mono.className)}>
                                             {new Date(note.updated_at).toLocaleDateString(undefined, {
                                                 month: 'short',
                                                 day: 'numeric',
@@ -182,7 +183,7 @@ export default function NotesPage() {
                         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-4">
                             <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                         </div>
-                        <h3 className={cn("text-xl font-bold text-slate-900 dark:text-white mb-2", headingFont.className)}>
+                        <h3 className={cn("text-xl font-semibold text-slate-900 dark:text-white mb-2", display.className)}>
                             Delete this note?
                         </h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">

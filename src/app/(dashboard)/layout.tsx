@@ -6,11 +6,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-    Plus, BookOpen, LayoutGrid, Menu, X, Moon, Sun,
-    Calendar, CalendarDays, Target // <-- Added Task Icons
+    Plus, Zap, LayoutGrid, Menu, X, Moon, Sun,
+    Calendar, CalendarDays, Target
 } from "lucide-react";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"] });
 
 export default function DashboardLayout({
     children,
@@ -55,19 +59,30 @@ export default function DashboardLayout({
         setIsMobileMenuOpen(false);
     };
 
+    const Logo = () => (
+        <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-lime-300 shrink-0">
+                <Zap className="w-4 h-4 text-lime-300 dark:text-slate-900" fill="currentColor" />
+            </div>
+            <span className={cn(display.className, "font-semibold text-lg tracking-tight text-slate-900 dark:text-white")}>
+                ZipNotes
+            </span>
+            <span className={cn(mono.className, "text-[10px] uppercase tracking-wider text-lime-600 dark:text-lime-400 border border-lime-200 dark:border-lime-400/30 rounded-full px-1.5 py-0.5 leading-none")}>
+                beta
+            </span>
+        </div>
+    );
+
     return (
-        <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900/50 dark:selection:text-indigo-100">
+        <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-slate-50 dark:bg-slate-950 selection:bg-lime-200 selection:text-slate-900 dark:selection:bg-lime-400/20 dark:selection:text-lime-100">
 
             {/* Mobile Header */}
             <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0 z-40">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300 mr-1">
                         <Menu className="w-6 h-6" />
                     </Button>
-                    <div className="bg-indigo-600 p-1.5 rounded-lg ml-1">
-                        <BookOpen className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">ZipNotes</span>
+                    <Logo />
                 </div>
                 <UserButton />
             </header>
@@ -88,13 +103,10 @@ export default function DashboardLayout({
 
                 {/* Header / App Name */}
                 <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                    <Link href="/notes" onClick={handleNavClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                        <div className="bg-indigo-600 p-1.5 rounded-lg">
-                            <BookOpen className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">ZipNotes</span>
+                    <Link href="/notes" onClick={handleNavClick} className="hover:opacity-80 transition-opacity overflow-hidden">
+                        <Logo />
                     </Link>
-                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-500">
+                    <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-500 shrink-0">
                         <X className="w-5 h-5" />
                     </Button>
                 </div>
@@ -102,7 +114,10 @@ export default function DashboardLayout({
                 {/* New Note Action */}
                 <div className="p-4 shrink-0">
                     <Link href="/notes/new" onClick={handleNavClick}>
-                        <Button className="w-full justify-start gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm" size="sm">
+                        <Button
+                            className="w-full justify-start gap-2 font-medium shadow-sm bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900"
+                            size="sm"
+                        >
                             <Plus className="w-4 h-4" />
                             New Note
                         </Button>
@@ -122,12 +137,12 @@ export default function DashboardLayout({
                                     className={cn(
                                         "w-full justify-start gap-3 mb-1 transition-colors",
                                         isActive
-                                            ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+                                            ? "bg-lime-100/70 dark:bg-lime-400/10 text-slate-900 dark:text-lime-300 font-medium hover:bg-lime-100 dark:hover:bg-lime-400/15"
                                             : "text-slate-600 dark:text-slate-400 font-normal hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                                     )}
                                     size="sm"
                                 >
-                                    <item.icon className={cn("w-4 h-4", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500")} />
+                                    <item.icon className={cn("w-4 h-4", isActive ? "text-lime-600 dark:text-lime-400" : "text-slate-400 dark:text-slate-500")} />
                                     {item.title}
                                 </Button>
                             </Link>
@@ -154,7 +169,7 @@ export default function DashboardLayout({
                                     </>
                                 ) : (
                                     <>
-                                        <Moon className="w-4 h-4 text-indigo-600" />
+                                        <Moon className="w-4 h-4 text-lime-600" />
                                         Dark Mode
                                     </>
                                 )}
@@ -170,8 +185,8 @@ export default function DashboardLayout({
                                 <span className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">
                                     {isLoaded && user ? user.firstName || 'User' : 'Loading...'}
                                 </span>
-                                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                    My Account
+                                <span className={cn(mono.className, "text-xs text-slate-500 dark:text-slate-400 truncate")}>
+                                    my account
                                 </span>
                             </div>
                         </div>
@@ -181,7 +196,7 @@ export default function DashboardLayout({
             </aside>
 
             {/* Main Content Render Area */}
-            <main className="flex-1 overflow-y-auto bg-white dark:bg-[#0B1120] shadow-[-8px_0_15px_-3px_rgba(0,0,0,0.02)] md:rounded-tl-2xl border-l border-slate-200 dark:border-slate-800 relative z-0">
+            <main className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 shadow-[-8px_0_15px_-3px_rgba(0,0,0,0.02)] md:rounded-tl-2xl border-l border-slate-200 dark:border-slate-800 relative z-0">
                 {children}
             </main>
         </div>

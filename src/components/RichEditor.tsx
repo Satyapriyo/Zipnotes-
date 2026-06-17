@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { useEditor, EditorContent, Extension } from '@tiptap/react';
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useEditor, EditorContent, ReactRenderer, Extension } from '@tiptap/react';
+import type { Editor, Range } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Markdown } from '@tiptap/markdown';
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
@@ -9,12 +10,17 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Suggestion, { type SuggestionProps, type SuggestionKeyDownProps } from '@tiptap/suggestion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@clerk/nextjs';
 import {
     Bold, Italic, Strikethrough, Code, Heading2, Heading3,
-    Link as LinkIcon, List, ListOrdered, Quote, Paperclip, Loader2
+    Link as LinkIcon, List, ListOrdered, Quote, Paperclip, Loader2,
+    Type, CheckSquare, Minus, Code2, ImagePlus, type LucideIcon
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import '@/styles/editor.css';
 
 function looksLikeMarkdown(text: string): boolean {
@@ -54,6 +60,226 @@ const PasteMarkdown = Extension.create({
     },
 });
 
+// ---------------------------------------------------------------------
+// Slash command menu — Notion-style "/" block picker
+// ---------------------------------------------------------------------
+
+interface CommandItem {
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    command: (props: { editor: Editor; range: Range }) => void;
+}
+
+function getSlashCommandItems(onAttach?: () => void): CommandItem[] {
+    return [
+        {
+            title: 'Text',
+            description: 'Plain paragraph text',
+            icon: Type,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run(),
+        },
+        {
+            title: 'Heading 2',
+            description: 'Medium section heading',
+            icon: Heading2,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run(),
+        },
+        {
+            title: 'Heading 3',
+            description: 'Small section heading',
+            icon: Heading3,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run(),
+        },
+        {
+            title: 'Bulleted list',
+            description: 'Simple bullet list',
+            icon: List,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
+        },
+        {
+            title: 'Numbered list',
+            description: 'List with numbering',
+            icon: ListOrdered,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
+        },
+        {
+            title: 'To-do list',
+            description: 'Checkboxes you can tick off',
+            icon: CheckSquare,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run(),
+        },
+        {
+            title: 'Quote',
+            description: 'Set off a callout or quote',
+            icon: Quote,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
+        },
+        {
+            title: 'Code block',
+            description: 'Multi-line code snippet',
+            icon: Code2,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+        },
+        {
+            title: 'Divider',
+            description: 'Horizontal rule',
+            icon: Minus,
+            command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
+        },
+        {
+            title: 'Image or file',
+            description: 'Upload an attachment',
+            icon: ImagePlus,
+            command: ({ editor, range }) => {
+                editor.chain().focus().deleteRange(range).run();
+                onAttach?.();
+            },
+        },
+    ];
+}
+
+interface CommandListRef {
+    onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+}
+
+const CommandList = forwardRef<CommandListRef, SuggestionProps<CommandItem>>((props, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const items = props.items;
+
+    useEffect(() => setSelectedIndex(0), [items]);
+
+    const selectItem = (index: number) => {
+        const item = items[index];
+        if (item) props.command(item);
+    };
+
+    useImperativeHandle(ref, () => ({
+        onKeyDown: ({ event }) => {
+            if (event.key === 'ArrowUp') {
+                setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+                return true;
+            }
+            if (event.key === 'ArrowDown') {
+                setSelectedIndex((selectedIndex + 1) % items.length);
+                return true;
+            }
+            if (event.key === 'Enter') {
+                selectItem(selectedIndex);
+                return true;
+            }
+            return false;
+        },
+    }), [selectedIndex, items]);
+
+    if (items.length === 0) return null;
+
+    return (
+        <div className="z-50 w-64 max-h-80 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-1">
+            {items.map((item, index) => {
+                const ItemIcon = item.icon;
+                return (
+                    <button
+                        key={item.title}
+                        onClick={() => selectItem(index)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                        className={cn(
+                            "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors",
+                            index === selectedIndex
+                                ? "bg-lime-50 dark:bg-lime-400/10 text-slate-900 dark:text-lime-300"
+                                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        )}
+                    >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            <ItemIcon className="h-4 w-4" />
+                        </span>
+                        <span className="flex flex-col overflow-hidden">
+                            <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{item.title}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{item.description}</span>
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+});
+CommandList.displayName = 'CommandList';
+
+function positionPopup(el: HTMLElement, props: { clientRect?: (() => DOMRect | null) | null }) {
+    const rect = props.clientRect?.();
+    if (!rect) return;
+    el.style.left = `${rect.left + window.scrollX}px`;
+    el.style.top = `${rect.bottom + window.scrollY + 8}px`;
+}
+
+interface SlashCommandOptions {
+    onAttach?: () => void;
+}
+
+const SlashCommand = Extension.create<SlashCommandOptions>({
+    name: 'slashCommand',
+
+    addOptions() {
+        return {
+            onAttach: undefined,
+        };
+    },
+
+    addProseMirrorPlugins() {
+        const onAttach = this.options.onAttach;
+
+        return [
+            Suggestion({
+                editor: this.editor,
+                char: '/',
+                pluginKey: new PluginKey('slashCommand'),
+                items: ({ query }) =>
+                    getSlashCommandItems(onAttach)
+                        .filter((item) => item.title.toLowerCase().includes(query.toLowerCase()))
+                        .slice(0, 10),
+                command: ({ editor, range, props }) => {
+                    props.command({ editor, range });
+                },
+                render: () => {
+                    let component: ReactRenderer<CommandListRef, SuggestionProps<CommandItem>>;
+                    let popup: HTMLDivElement;
+
+                    return {
+                        onStart: (props) => {
+                            component = new ReactRenderer(CommandList, {
+                                props,
+                                editor: props.editor,
+                            });
+
+                            popup = document.createElement('div');
+                            popup.style.position = 'absolute';
+                            popup.style.zIndex = '60';
+                            document.body.appendChild(popup);
+                            popup.appendChild(component.element);
+
+                            positionPopup(popup, props);
+                        },
+                        onUpdate: (props) => {
+                            component.updateProps(props);
+                            positionPopup(popup, props);
+                        },
+                        onKeyDown: (props) => {
+                            if (props.event.key === 'Escape') {
+                                return true;
+                            }
+                            return component.ref?.onKeyDown(props) ?? false;
+                        },
+                        onExit: () => {
+                            popup?.remove();
+                            component?.destroy();
+                        },
+                    };
+                },
+            }),
+        ];
+    },
+});
+
 interface RichEditorProps {
     value: string;
     onChange: (content: string) => void;
@@ -69,10 +295,20 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
             StarterKit,
             Markdown,
             PasteMarkdown,
+            TaskList.configure({
+                HTMLAttributes: { class: 'zn-task-list' },
+            }),
+            TaskItem.configure({
+                nested: true,
+                HTMLAttributes: { class: 'zn-task-item' },
+            }),
+            SlashCommand.configure({
+                onAttach: () => fileInputRef.current?.click(),
+            }),
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
-                    class: 'text-indigo-600 dark:text-indigo-400 underline cursor-pointer decoration-indigo-300 dark:decoration-indigo-500/50 underline-offset-2',
+                    class: 'text-lime-700 dark:text-lime-400 underline cursor-pointer decoration-lime-400/60 dark:decoration-lime-500/50 underline-offset-2',
                 },
             }),
             Image.configure({
@@ -81,7 +317,12 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
                 },
             }),
             Placeholder.configure({
-                placeholder: "Press '/' or use the menu to format...",
+                placeholder: ({ node }) => {
+                    if (node.type.name === 'heading') {
+                        return `Heading ${node.attrs.level}`;
+                    }
+                    return "Press '/' for commands, or just start typing...";
+                },
                 emptyNodeClass: 'is-empty',
             }),
         ],
@@ -202,7 +443,7 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
                     <Code className="w-4 h-4" />
                 </Button>
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
-                <Button size="sm" variant="ghost" onClick={setLink} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 ${editor.isActive('link') ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                <Button size="sm" variant="ghost" onClick={setLink} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 ${editor.isActive('link') ? 'bg-lime-50 dark:bg-lime-400/10 text-lime-700 dark:text-lime-300' : 'text-slate-600 dark:text-slate-400'}`}>
                     <LinkIcon className="w-4 h-4" />
                 </Button>
             </BubbleMenu>
@@ -222,9 +463,18 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
                 <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleOrderedList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                     <ListOrdered className="w-4 h-4" />
                 </Button>
+                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleTaskList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                    <CheckSquare className="w-4 h-4" />
+                </Button>
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
                 <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBlockquote().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                     <Quote className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                    <Code2 className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().setHorizontalRule().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                    <Minus className="w-4 h-4" />
                 </Button>
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
                 <Button
@@ -243,6 +493,80 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
             <div className="flex-1 w-full max-w-4xl mx-auto md:px-8 py-4">
                 <EditorContent editor={editor} />
             </div>
+
+            {/* Notion-style checkbox styling for task lists */}
+            <style jsx global>{`
+                .ProseMirror ul.zn-task-list,
+                .ProseMirror ul[data-type='taskList'] {
+                    list-style: none;
+                    padding-left: 0.25rem;
+                    margin: 0.5rem 0;
+                }
+                .ProseMirror li.zn-task-item,
+                .ProseMirror li[data-type='taskItem'] {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 0.6rem;
+                    margin: 0.35rem 0;
+                }
+                .ProseMirror li.zn-task-item > label,
+                .ProseMirror li[data-type='taskItem'] > label {
+                    flex-shrink: 0;
+                    margin-top: 0.3rem;
+                    user-select: none;
+                }
+                .ProseMirror li.zn-task-item > div,
+                .ProseMirror li[data-type='taskItem'] > div {
+                    flex: 1 1 auto;
+                    min-width: 0;
+                }
+                .ProseMirror li.zn-task-item > div > p,
+                .ProseMirror li[data-type='taskItem'] > div > p {
+                    margin: 0;
+                }
+                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox'] {
+                    appearance: none;
+                    -webkit-appearance: none;
+                    width: 1.1rem;
+                    height: 1.1rem;
+                    border: 1.5px solid #cbd5e1;
+                    border-radius: 0.3rem;
+                    cursor: pointer;
+                    position: relative;
+                    display: inline-block;
+                    background-color: transparent;
+                    transition: background-color 0.15s, border-color 0.15s;
+                }
+                .dark .ProseMirror li[data-type='taskItem'] > label input[type='checkbox'] {
+                    border-color: #475569;
+                }
+                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox']:checked {
+                    background-color: #bef264;
+                    border-color: #bef264;
+                }
+                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox']:checked::after {
+                    content: '';
+                    position: absolute;
+                    left: 4px;
+                    top: 1px;
+                    width: 4px;
+                    height: 8px;
+                    border: solid #0f172a;
+                    border-width: 0 2px 2px 0;
+                    transform: rotate(45deg);
+                }
+                .ProseMirror li[data-type='taskItem'][data-checked='true'] > div {
+                    color: #94a3b8;
+                    text-decoration: line-through;
+                }
+                .dark .ProseMirror li[data-type='taskItem'][data-checked='true'] > div {
+                    color: #64748b;
+                }
+                .ProseMirror li[data-type='taskItem'] ul[data-type='taskList'] {
+                    margin-top: 0.35rem;
+                    padding-left: 1.4rem;
+                }
+            `}</style>
         </div>
     );
 }

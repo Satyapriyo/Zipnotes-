@@ -7,8 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Trash2, Plus, Check, Circle, Target, Calendar, CalendarDays, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
+const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"] });
 
 interface Task {
     id: string;
@@ -36,7 +40,7 @@ export default function TasksPage() {
         'today': { title: "Today's Tasks", desc: "What needs to get done today?", icon: Calendar, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
         'weekly': { title: "Weekly Tasks", desc: "Your priorities for this week.", icon: CalendarDays, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
         'long-term': { title: "Long-Term Goals", desc: "Big picture objectives and milestones.", icon: Target, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-500/10" },
-    }[category] || { title: "Tasks", desc: "Manage your tasks.", icon: Target, color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-500/10" };
+    }[category] || { title: "Tasks", desc: "Manage your tasks.", icon: Target, color: "text-lime-600 dark:text-lime-400", bg: "bg-lime-100 dark:bg-lime-400/10" };
 
     const Icon = pageConfig.icon;
 
@@ -134,7 +138,7 @@ export default function TasksPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-lime-500 dark:text-lime-400" />
             </div>
         );
     }
@@ -146,7 +150,7 @@ export default function TasksPage() {
                     <Icon className={`w-7 h-7 ${pageConfig.color}`} />
                 </div>
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-2">{pageConfig.title}</h1>
+                    <h1 className={cn("text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2", display.className)}>{pageConfig.title}</h1>
                     <p className="text-slate-600 dark:text-slate-400">{pageConfig.desc}</p>
                 </div>
             </div>
@@ -156,13 +160,13 @@ export default function TasksPage() {
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     placeholder="Add a new task... (Press Enter to save)"
-                    className="h-14 pl-5 pr-32 text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-indigo-500 rounded-2xl shadow-sm dark:text-white placeholder:text-slate-400"
+                    className="h-14 pl-5 pr-32 text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-lime-400 rounded-2xl shadow-sm dark:text-white placeholder:text-slate-400"
                     disabled={adding}
                 />
                 <Button
                     type="submit"
                     disabled={!newTaskTitle.trim() || adding}
-                    className="absolute right-2 top-2 bottom-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6"
+                    className="absolute right-2 top-2 bottom-2 bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 rounded-xl px-6 font-medium"
                 >
                     {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5 mr-1" />}
                     Add
@@ -180,13 +184,13 @@ export default function TasksPage() {
                             key={task.id}
                             className={`group flex items-center justify-between p-4 bg-white dark:bg-slate-900/50 border rounded-2xl transition-all duration-200 ${task.completed
                                 ? 'border-slate-100 dark:border-slate-800/50 opacity-60'
-                                : 'border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:shadow-sm'
+                                : 'border-slate-200 dark:border-slate-800 hover:border-lime-300 dark:hover:border-lime-400/30 hover:shadow-sm'
                                 }`}
                         >
                             <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleTask(task.id, task.completed)}>
                                 <button className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors shrink-0 ${task.completed
-                                    ? 'bg-indigo-500 border-indigo-500 text-white'
-                                    : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-indigo-400'
+                                    ? 'bg-lime-400 border-lime-400 text-slate-900'
+                                    : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-lime-400'
                                     }`}>
                                     {task.completed ? <Check className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-0" />}
                                 </button>
@@ -198,7 +202,7 @@ export default function TasksPage() {
                                         }`}>
                                         {task.title}
                                     </span>
-                                    <span className={`text-xs mt-0.5 ${task.completed ? 'text-slate-400/50 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500'}`}>
+                                    <span className={cn("text-xs mt-0.5", mono.className, task.completed ? 'text-slate-400/50 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500')}>
                                         Created {new Date(task.created_at).toLocaleString(undefined, {
                                             month: 'short',
                                             day: 'numeric',
@@ -226,7 +230,7 @@ export default function TasksPage() {
                         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-4">
                             <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                         </div>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                        <h3 className={cn("text-xl font-semibold text-slate-900 dark:text-white mb-2", display.className)}>
                             Delete this task?
                         </h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
