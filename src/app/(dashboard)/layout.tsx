@@ -103,7 +103,7 @@ export default function DashboardLayout({
 
                 {/* Header / App Name */}
                 <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                    <Link href="/notes" onClick={handleNavClick} className="hover:opacity-80 transition-opacity overflow-hidden">
+                    <Link href="/" onClick={handleNavClick} className="hover:opacity-80 transition-opacity overflow-hidden">
                         <Logo />
                     </Link>
                     <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-500 shrink-0">
