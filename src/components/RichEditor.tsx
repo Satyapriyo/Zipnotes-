@@ -490,7 +490,7 @@ export function RichEditor({ value, onChange }: RichEditorProps) {
             </FloatingMenu>
 
             {/* Editor Content Area */}
-            <div className="flex-1 w-full max-w-4xl mx-auto md:px-8 py-4">
+            <div className="flex-1 w-full max-w-4xl mx-auto px-0 sm:px-4 md:px-8 py-4">
                 <EditorContent editor={editor} />
             </div>
 

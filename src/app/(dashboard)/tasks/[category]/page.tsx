@@ -144,29 +144,29 @@ export default function TasksPage() {
     }
 
     return (
-        <div className="p-8 max-w-4xl mx-auto relative">
-            <div className="mb-10 flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${pageConfig.bg}`}>
-                    <Icon className={`w-7 h-7 ${pageConfig.color}`} />
+        <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto relative">
+            <div className="mb-8 sm:mb-10 flex items-center gap-3 sm:gap-4">
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 ${pageConfig.bg}`}>
+                    <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${pageConfig.color}`} />
                 </div>
-                <div>
-                    <h1 className={cn("text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-2", display.className)}>{pageConfig.title}</h1>
-                    <p className="text-slate-600 dark:text-slate-400">{pageConfig.desc}</p>
+                <div className="min-w-0">
+                    <h1 className={cn("text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-1 sm:mb-2", display.className)}>{pageConfig.title}</h1>
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">{pageConfig.desc}</p>
                 </div>
             </div>
 
-            <form onSubmit={addTask} className="mb-10 relative">
+            <form onSubmit={addTask} className="mb-8 sm:mb-10 relative">
                 <Input
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
                     placeholder="Add a new task... (Press Enter to save)"
-                    className="h-14 pl-5 pr-32 text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-lime-400 rounded-2xl shadow-sm dark:text-white placeholder:text-slate-400"
+                    className="h-12 sm:h-14 pl-4 sm:pl-5 pr-24 sm:pr-32 text-base sm:text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-lime-400 rounded-2xl shadow-sm text-slate-900 dark:text-white placeholder:text-slate-400"
                     disabled={adding}
                 />
                 <Button
                     type="submit"
                     disabled={!newTaskTitle.trim() || adding}
-                    className="absolute right-2 top-2 bottom-2 bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 rounded-xl px-6 font-medium"
+                    className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 rounded-xl px-4 sm:px-6 font-medium"
                 >
                     {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5 mr-1" />}
                     Add

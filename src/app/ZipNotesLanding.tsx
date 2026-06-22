@@ -116,7 +116,7 @@ export default function ZipNotesLanding() {
                     </div>
 
                     <div className="hidden md:flex items-center gap-3">
-                        <a href="sign-up" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                        <a href="sign-in" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
                             Sign in
                         </a>
                         <a
@@ -141,8 +141,9 @@ export default function ZipNotesLanding() {
                         <a href="#compare" onClick={() => setMenuOpen(false)} className="text-sm text-slate-600 dark:text-slate-300">Compare</a>
                         <a href="#features" onClick={() => setMenuOpen(false)} className="text-sm text-slate-600 dark:text-slate-300">Who it's for</a>
                         <a href="#faq" onClick={() => setMenuOpen(false)} className="text-sm text-slate-600 dark:text-slate-300">FAQ</a>
+                        <a href="sign-in" onClick={() => setMenuOpen(false)} className="text-sm text-slate-600 dark:text-slate-300">Sign in</a>
                         <a
-                            href="signup"
+                            href="sign-up"
                             onClick={() => setMenuOpen(false)}
                             className="zn-mono text-sm font-medium rounded-full bg-slate-900 dark:bg-lime-300 text-lime-300 dark:text-slate-900 px-4 py-2 text-center"
                         >
@@ -256,18 +257,18 @@ export default function ZipNotesLanding() {
                         built to do one thing.
                     </p>
 
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-lg">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
+                    <div className="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden shadow-lg">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-300 dark:border-slate-800 bg-slate-200/80 dark:bg-transparent">
                             <span className="h-2.5 w-2.5 rounded-full bg-rose-500/70" />
                             <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
                             <span className="h-2.5 w-2.5 rounded-full bg-lime-400/70" />
-                            <span className="zn-mono text-xs text-slate-400 ml-2">compare.diff</span>
+                            <span className="zn-mono text-xs text-slate-500 dark:text-slate-400 ml-2">compare.diff</span>
                         </div>
                         <div className="zn-mono text-sm leading-relaxed px-4 sm:px-6 py-5 overflow-x-auto">
                             {DIFF_LINES.map((line, i) => (
                                 <div
                                     key={i}
-                                    className={`flex gap-3 py-1 whitespace-nowrap sm:whitespace-normal ${line.type === "minus" ? "text-rose-300/90" : "text-lime-300/90"
+                                    className={`flex gap-3 py-1 whitespace-nowrap sm:whitespace-normal ${line.type === "minus" ? "text-rose-600 dark:text-rose-300/90" : "text-lime-700 dark:text-lime-300/90"
                                         }`}
                                 >
                                     <span className="select-none">{line.type === "minus" ? "−" : "+"}</span>

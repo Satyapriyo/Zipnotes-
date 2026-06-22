@@ -161,9 +161,8 @@ export default function NoteEditorPage() {
 
     return (
         <div className="h-full flex flex-col bg-white dark:bg-slate-900">
-            {/* Header - Made sticky with a subtle blur, aligned with editor content */}
-            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1 max-w-4xl mx-auto w-full">
+            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 px-4 sm:px-6 py-3 sm:py-4">
+                <div className="flex items-center gap-2 sm:gap-4 max-w-4xl mx-auto w-full min-w-0">
                     <Button
                         variant="outline"
                         size="icon"
@@ -177,13 +176,13 @@ export default function NoteEditorPage() {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="Untitled Note"
-                        className={cn("text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 border-none focus-visible:ring-0 h-auto px-0 bg-white dark:bg-slate-900", display.className)}
+                        className={cn("flex-1 min-w-0 text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 border-none focus-visible:ring-0 h-auto px-0 bg-transparent", display.className)}
                     />
 
                     <Button
                         onClick={saveNote}
                         disabled={saving}
-                        className="bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 shadow-sm gap-2 shrink-0 ml-4 font-medium"
+                        className="bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 shadow-sm gap-2 shrink-0 font-medium px-3 sm:px-4"
                     >
                         {saving ? (
                             <>
@@ -200,9 +199,8 @@ export default function NoteEditorPage() {
                 </div>
             </div>
 
-            {/* Editor Container */}
             <div className="flex-1 overflow-auto">
-                <div className="max-w-4xl mx-auto w-full h-full">
+                <div className="max-w-4xl mx-auto w-full h-full px-4 sm:px-6">
                     <RichEditor value={content} onChange={setContent} />
                 </div>
             </div>
