@@ -14,7 +14,14 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Suggestion, { type SuggestionProps, type SuggestionKeyDownProps } from '@tiptap/suggestion';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { DropdownMenu } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Toaster } from '@/components/ui/sonner';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@clerk/nextjs';
+
+
 import {
     Bold, Italic, Strikethrough, Code, Heading2, Heading3,
     Link as LinkIcon, List, ListOrdered, Quote, Paperclip, Loader2,
@@ -22,6 +29,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import '@/styles/editor.css';
+
+
+
+
+import "@blocknote/core/fonts/inter.css";
+import { useCreateBlockNote } from "@blocknote/react";
+import { BlockNoteView } from "@blocknote/shadcn";
+import "@blocknote/shadcn/style.css";
+import { BlockNoteEditor } from '@blocknote/core';
+import { useTheme } from 'next-themes';
 
 function looksLikeMarkdown(text: string): boolean {
     return (
@@ -285,288 +302,22 @@ interface RichEditorProps {
     onChange: (content: string) => void;
 }
 
-export function RichEditor({ value, onChange }: RichEditorProps) {
-    const { userId } = useAuth();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isUploading, setIsUploading] = useState(false);
 
-    const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Markdown,
-            PasteMarkdown,
-            TaskList.configure({
-                HTMLAttributes: { class: 'zn-task-list' },
-            }),
-            TaskItem.configure({
-                nested: true,
-                HTMLAttributes: { class: 'zn-task-item' },
-            }),
-            SlashCommand.configure({
-                onAttach: () => fileInputRef.current?.click(),
-            }),
-            Link.configure({
-                openOnClick: false,
-                HTMLAttributes: {
-                    class: 'text-lime-700 dark:text-lime-400 underline cursor-pointer decoration-lime-400/60 dark:decoration-lime-500/50 underline-offset-2',
-                },
-            }),
-            Image.configure({
-                HTMLAttributes: {
-                    class: 'rounded-lg border border-slate-200 dark:border-slate-800 max-w-full my-4 shadow-sm',
-                },
-            }),
-            Placeholder.configure({
-                placeholder: ({ node }) => {
-                    if (node.type.name === 'heading') {
-                        return `Heading ${node.attrs.level}`;
-                    }
-                    return "Press '/' for commands, or just start typing...";
-                },
-                emptyNodeClass: 'is-empty',
-            }),
-        ],
-        content: value,
-        immediatelyRender: false,
-        editorProps: {
-            attributes: {
-                class: 'prose dark:prose-invert prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none min-h-[500px] text-slate-800 dark:text-slate-200',
-            },
-        },
-        onUpdate: ({ editor }) => {
-            onChange(editor.getHTML());
-        },
-    });
+export async function RichEditor({ value, onChange }: RichEditorProps) {
+    // Creates a new editor instance.
 
-    // --- CLOUDINARY UPLOAD LOGIC ---
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !userId || !editor) return;
 
-        try {
-            setIsUploading(true);
+    const editor = BlockNoteEditor.create();
 
-            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-            const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    const blocks = await editor.tryParseMarkdownToBlocks(value);
 
-            if (!cloudName || !uploadPreset) {
-                throw new Error("Missing Cloudinary environment variables");
-            }
+    // Replace the document
+    editor.replaceBlocks(editor.document, blocks);
 
-            // Prepare the form data for Cloudinary
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset);
-            // Organize files into folders by User ID inside Cloudinary!
-            formData.append('folder', `zipnotes/users/${userId}`);
-
-            // Send to Cloudinary REST API
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || 'Failed to upload to Cloudinary');
-            }
-
-            // Get the ultra-fast CDN url back
-            const secureUrl = data.secure_url;
-
-            // Insert into Tiptap based on file type
-            if (file.type.startsWith('image/')) {
-                editor.chain().focus().setImage({ src: secureUrl }).run();
-            } else if (file.type.startsWith('video/')) {
-                // Tiptap doesn't natively support <video> tags in StarterKit, 
-                // so we insert it as a clean link with a video emoji
-                editor
-                    .chain()
-                    .focus()
-                    .insertContent(`<a href="${secureUrl}" target="_blank" rel="noopener noreferrer">🎥 ${file.name}</a>`)
-                    .run();
-            } else {
-                editor
-                    .chain()
-                    .focus()
-                    .insertContent(`<a href="${secureUrl}" target="_blank" rel="noopener noreferrer">📎 ${file.name}</a>`)
-                    .run();
-            }
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            alert("Failed to upload attachment. Please try again.");
-        } finally {
-            setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
-    };
-
-    if (!editor) return null;
-
-    const setLink = () => {
-        const previousUrl = editor.getAttributes('link').href;
-        const url = window.prompt('URL', previousUrl);
-
-        if (url === null) return;
-        if (url === '') {
-            editor.chain().focus().extendMarkRange('link').unsetLink().run();
-            return;
-        }
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-    };
-
+    // Renders the editor instance using a React component.
     return (
-        <div className="relative h-full flex flex-col cursor-text group" onClick={() => editor.commands.focus()}>
-
-            {/* Hidden File Input (Now accepts video formats too!) */}
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
-            />
-
-            {/* 1. BUBBLE MENU */}
-            <BubbleMenu editor={editor} options={{ placement: 'top' }} className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-1">
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBold().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('bold') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Bold className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleItalic().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('italic') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Italic className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleStrike().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('strike') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Strikethrough className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleCode().run()} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 ${editor.isActive('code') ? 'bg-slate-100 dark:bg-slate-800 text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <Code className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
-                <Button size="sm" variant="ghost" onClick={setLink} className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 ${editor.isActive('link') ? 'bg-lime-50 dark:bg-lime-400/10 text-lime-700 dark:text-lime-300' : 'text-slate-600 dark:text-slate-400'}`}>
-                    <LinkIcon className="w-4 h-4" />
-                </Button>
-            </BubbleMenu>
-
-            {/* 2. FLOATING MENU */}
-            <FloatingMenu editor={editor} options={{ placement: 'right' }} className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg rounded-lg p-1 animate-in fade-in zoom-in-95 duration-200">
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    H2
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    H3
-                </Button>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBulletList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <List className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleOrderedList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <ListOrdered className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleTaskList().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <CheckSquare className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBlockquote().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <Quote className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <Code2 className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().setHorizontalRule().run()} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
-                    <Minus className="w-4 h-4" />
-                </Button>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1" />
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="h-8 px-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 gap-2"
-                >
-                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
-                    {isUploading ? "Uploading..." : "Attach"}
-                </Button>
-            </FloatingMenu>
-
-            {/* Editor Content Area */}
-            <div className="flex-1 w-full max-w-4xl mx-auto px-0 sm:px-4 md:px-8 py-4">
-                <EditorContent editor={editor} />
-            </div>
-
-            {/* Notion-style checkbox styling for task lists */}
-            <style jsx global>{`
-                .ProseMirror ul.zn-task-list,
-                .ProseMirror ul[data-type='taskList'] {
-                    list-style: none;
-                    padding-left: 0.25rem;
-                    margin: 0.5rem 0;
-                }
-                .ProseMirror li.zn-task-item,
-                .ProseMirror li[data-type='taskItem'] {
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 0.6rem;
-                    margin: 0.35rem 0;
-                }
-                .ProseMirror li.zn-task-item > label,
-                .ProseMirror li[data-type='taskItem'] > label {
-                    flex-shrink: 0;
-                    margin-top: 0.3rem;
-                    user-select: none;
-                }
-                .ProseMirror li.zn-task-item > div,
-                .ProseMirror li[data-type='taskItem'] > div {
-                    flex: 1 1 auto;
-                    min-width: 0;
-                }
-                .ProseMirror li.zn-task-item > div > p,
-                .ProseMirror li[data-type='taskItem'] > div > p {
-                    margin: 0;
-                }
-                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox'] {
-                    appearance: none;
-                    -webkit-appearance: none;
-                    width: 1.1rem;
-                    height: 1.1rem;
-                    border: 1.5px solid #cbd5e1;
-                    border-radius: 0.3rem;
-                    cursor: pointer;
-                    position: relative;
-                    display: inline-block;
-                    background-color: transparent;
-                    transition: background-color 0.15s, border-color 0.15s;
-                }
-                .dark .ProseMirror li[data-type='taskItem'] > label input[type='checkbox'] {
-                    border-color: #475569;
-                }
-                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox']:checked {
-                    background-color: #bef264;
-                    border-color: #bef264;
-                }
-                .ProseMirror li[data-type='taskItem'] > label input[type='checkbox']:checked::after {
-                    content: '';
-                    position: absolute;
-                    left: 4px;
-                    top: 1px;
-                    width: 4px;
-                    height: 8px;
-                    border: solid #0f172a;
-                    border-width: 0 2px 2px 0;
-                    transform: rotate(45deg);
-                }
-                .ProseMirror li[data-type='taskItem'][data-checked='true'] > div {
-                    color: #94a3b8;
-                    text-decoration: line-through;
-                }
-                .dark .ProseMirror li[data-type='taskItem'][data-checked='true'] > div {
-                    color: #64748b;
-                }
-                .ProseMirror li[data-type='taskItem'] ul[data-type='taskList'] {
-                    margin-top: 0.35rem;
-                    padding-left: 1.4rem;
-                }
-            `}</style>
-        </div>
+        <BlockNoteView
+            editor={editor}
+        />
     );
 }

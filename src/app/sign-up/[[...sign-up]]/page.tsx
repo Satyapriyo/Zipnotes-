@@ -4,37 +4,11 @@ import { useEffect, useState } from "react";
 import { ClerkLoaded, ClerkLoading, SignUp } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Link from "next/link";
-import { Loader2, Zap } from "lucide-react";
-import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
-
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"] });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"] });
-
-const SPOTS_TOTAL = 100;
-const SPOTS_CLAIMED = 64;
+import { Logo } from "@/components/zn/Logo";
 
 function getClerkAppearance(isDark: boolean) {
-    const colors = isDark
-        ? {
-            background: "#0f172a", // slate-900
-            inputBackground: "#1e293b", // slate-800
-            text: "#f1f5f9", // slate-100
-            textSecondary: "#94a3b8", // slate-400
-            cardBorder: "border-slate-800",
-            inputBorder: "border-slate-700",
-            hoverBg: "hover:bg-slate-800",
-        }
-        : {
-            background: "#ffffff",
-            inputBackground: "#f8fafc", // slate-50
-            text: "#0f172a", // slate-900
-            textSecondary: "#64748b", // slate-500
-            cardBorder: "border-slate-200",
-            inputBorder: "border-slate-200",
-            hoverBg: "hover:bg-slate-50",
-        };
-
     return {
         baseTheme: isDark ? dark : undefined,
         layout: {
@@ -42,40 +16,39 @@ function getClerkAppearance(isDark: boolean) {
             logoPlacement: "none" as const,
         },
         variables: {
-            colorPrimary: "#bef264", // lime-300
-            colorText: colors.text,
-            colorTextSecondary: colors.textSecondary,
-            colorBackground: colors.background,
-            colorInputBackground: colors.inputBackground,
-            colorInputText: colors.text,
+            colorPrimary: isDark ? "#f97316" : "#f97316", // Ember
+            colorBackground: "transparent",
+            colorInputBackground: "transparent",
+            colorText: "inherit",
+            colorTextSecondary: "inherit",
             borderRadius: "0.75rem",
             fontFamily: "inherit",
         },
         elements: {
             rootBox: "w-full",
             cardBox: "w-full shadow-none",
-            card: `shadow-none border ${colors.cardBorder} rounded-2xl p-6 sm:p-8 w-full`,
-            headerTitle: `${display.className} text-2xl font-semibold tracking-tight ${isDark ? "text-white" : "text-slate-900"
-                }`,
-            headerSubtitle: isDark ? "text-slate-400" : "text-slate-500",
-            socialButtonsBlockButton: `rounded-xl font-medium border ${colors.inputBorder} ${colors.hoverBg}`,
+            // Strip Clerk's card to blend naturally with our background
+            card: "shadow-none border-none bg-transparent p-0 w-full",
+            // Hide Clerk's internal header since we provide our own layout
+            headerTitle: "hidden",
+            headerSubtitle: "hidden",
+            socialButtonsBlockButton:
+                "inline-flex w-full items-center justify-center gap-2 rounded-full border border-rule bg-paper px-5 py-3.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-ink/30 hover:bg-paper-2 hover:text-ink",
             socialButtonsBlockButtonText: "font-medium",
-            dividerLine: isDark ? "bg-slate-800" : "bg-slate-200",
-            dividerText: `${mono.className} text-xs uppercase tracking-wide ${isDark ? "text-slate-500" : "text-slate-400"
-                }`,
-            formFieldLabel: `font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`,
-            formFieldInput: `rounded-xl border ${colors.inputBorder} focus:border-lime-400 focus:ring-2 focus:ring-lime-400/30`,
-            formButtonPrimary: `text-sm font-semibold rounded-full normal-case shadow-none py-2.5 ${isDark
-                ? "bg-lime-300 hover:bg-lime-200 text-slate-900"
-                : "bg-slate-900 hover:bg-slate-800 text-lime-300"
-                }`,
-            footerActionLink: `font-medium ${isDark ? "text-lime-300 hover:text-lime-200" : "text-slate-900 hover:text-lime-600"
-                }`,
-            identityPreviewEditButton: isDark
-                ? "text-slate-400 hover:text-white"
-                : "text-slate-500 hover:text-slate-900",
-            formFieldAction: isDark ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900",
-            footer: "bg-transparent",
+            dividerLine: "bg-rule",
+            dividerText: "font-mono text-[10px] uppercase tracking-wider text-ink-muted",
+            formFieldLabel:
+                "mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted",
+            formFieldInput:
+                "w-full rounded-xl border border-rule bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-muted/70 outline-none transition-all focus:border-ember focus:ring-2 focus:ring-ember/15",
+            formButtonPrimary:
+                "group inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-3.5 text-[14px] font-medium text-paper transition-all hover:translate-y-[-1px] hover:bg-ink-soft",
+            identityPreviewEditButton: "text-ink-muted hover:text-ink",
+            formFieldAction: "text-ink-soft hover:text-ink",
+            footer: "bg-transparent px-0 pb-0 pt-6",
+            footerActionText: "text-[13px] text-ink-soft",
+            footerActionLink:
+                "text-[13px] text-ink underline decoration-ember decoration-1 underline-offset-4 hover:text-ember font-normal",
         },
     };
 }
@@ -86,84 +59,93 @@ export default function SignUpPage() {
 
     useEffect(() => setMounted(true), []);
 
-    // Default to light until the theme is resolved on the client, to avoid
-    // a flash of mismatched styling on the Clerk widget.
     const isDark = mounted && resolvedTheme === "dark";
     const clerkAppearance = getClerkAppearance(isDark);
 
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
-            {/* top "loading bar" accent, consistent with the landing page */}
-            <div className="h-[3px] w-full bg-gradient-to-r from-lime-400 via-lime-300 to-transparent" />
+        <div className="grain min-h-screen bg-paper text-ink">
+            <div className="grain-overlay" />
 
-            <div className="flex flex-1">
-                {/* Branded panel — always dark, hidden on small screens */}
-                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-950 flex-col justify-between p-12">
-                    <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-lime-400/20 blur-3xl" />
-
-                    <Link href="/" className="relative flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-lime-300">
-                            <Zap className="h-4 w-4 text-slate-900" fill="currentColor" />
-                        </span>
-                        <span className={`${display.className} text-lg font-semibold tracking-tight text-white`}>
-                            ZipNotes
-                        </span>
+            {/* Header */}
+            <header className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+                <div className="flex items-center justify-between">
+                    <Logo small />
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-muted transition-colors hover:text-ink"
+                    >
+                        <ArrowLeft className="h-3 w-3" />
+                        back home
                     </Link>
-
-                    <div className="relative max-w-md">
-                        <div className={`${mono.className} text-xs text-lime-400 mb-3`}>
-                            // welcome
-                        </div>
-                        <h1 className={`${display.className} text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-4 leading-tight`}>
-                            Write it down before the meeting starts.
-                        </h1>
-                        <p className="text-slate-400 leading-relaxed">
-                            Create your account and get a notepad that opens instantly — even on
-                            the networks that block everything else.
-                        </p>
-                    </div>
-
-                    <div className="relative max-w-xs">
-                        <div className={`${mono.className} flex justify-between text-xs text-slate-400 mb-2`}>
-                            <span>{SPOTS_CLAIMED} / {SPOTS_TOTAL} claimed</span>
-                            <span>{SPOTS_TOTAL - SPOTS_CLAIMED} left</span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
-                            <div
-                                className="h-full rounded-full bg-lime-400"
-                                style={{ width: `${(SPOTS_CLAIMED / SPOTS_TOTAL) * 100}%` }}
-                            />
-                        </div>
-                    </div>
                 </div>
+            </header>
 
-                {/* Sign-up form */}
-                <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-16">
-                    <Link href="/" className="lg:hidden flex items-center gap-2.5 mb-10">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-lime-300">
-                            <Zap className="h-4 w-4 text-lime-300 dark:text-slate-900" fill="currentColor" />
-                        </span>
-                        <span className={`${display.className} text-lg font-semibold tracking-tight text-slate-900 dark:text-white`}>
-                            ZipNotes
-                        </span>
-                    </Link>
+            {/* Main Layout */}
+            <main className="mx-auto grid max-w-5xl gap-12 px-4 pb-16 pt-8 sm:px-6 md:grid-cols-2 md:gap-16 md:pt-16">
 
-                    <div className="w-full max-w-md">
+                {/* Left Side: Brand messaging */}
+                <aside className="hidden md:block">
+                    <div className="font-mono text-[11px] uppercase tracking-[0.15em] text-ember-ink">
+                        01 / get started
+                    </div>
+                    <h2 className="mt-3 font-display text-[2.5rem] font-medium leading-[1.05] tracking-[-0.03em]">
+                        One page. <span className="font-editorial italic">Type.</span>
+                        <br />
+                        It saves itself.
+                    </h2>
+                    <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-ink-soft">
+                        ZipNotes is a tiny, cloud-synced notepad. No workspaces. No databases.
+                        Nothing that needs setting up.
+                    </p>
+
+                    <div className="mt-10 rounded-2xl border border-rule bg-paper-2/60 p-5 backdrop-blur-sm">
+                        <div className="mb-3 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                            what you get
+                        </div>
+                        <ul className="space-y-2.5 text-[13px] text-ink-soft">
+                            {[
+                                "Unlimited notes, synced across devices",
+                                "Opens in under half a second",
+                                "Free forever for the core notepad",
+                                "Plain text, no lock-in",
+                            ].map((l) => (
+                                <li key={l} className="flex gap-2">
+                                    <span className="text-ember">+</span>
+                                    {l}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </aside>
+
+                {/* Right Side: Clerk Authentication form */}
+                <section className="fade-up w-full max-w-md">
+                    {/* Mobile Eyebrow (Hidden on desktop) */}
+                    <div className="md:hidden">
+                        <div className="font-mono text-[11px] uppercase tracking-[0.15em] text-ember-ink">
+                            01 / get started
+                        </div>
+                    </div>
+
+                    <h1 className="mt-2 font-display text-3xl font-medium tracking-[-0.03em] sm:text-4xl">
+                        Create your account
+                    </h1>
+                    <p className="mt-2 text-[14px] text-ink-soft">
+                        Free forever for the core notepad. No credit card required.
+                    </p>
+
+                    <div className="mt-8">
                         <ClerkLoading>
-                            <div className="flex items-center justify-center py-24">
-                                <Loader2 className="w-8 h-8 animate-spin text-lime-500" />
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-ink-muted/50" />
                             </div>
                         </ClerkLoading>
                         <ClerkLoaded>
-                            <SignUp appearance={clerkAppearance} />
+                            <SignUp appearance={clerkAppearance} routing="hash" />
                         </ClerkLoaded>
                     </div>
-
-                    <p className={`${mono.className} lg:hidden mt-10 text-xs text-slate-400 dark:text-slate-500`}>
-                        {SPOTS_TOTAL - SPOTS_CLAIMED} of {SPOTS_TOTAL} beta spots left
-                    </p>
-                </div>
-            </div>
+                </section>
+            </main>
         </div>
     );
 }

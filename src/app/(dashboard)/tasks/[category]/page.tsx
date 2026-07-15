@@ -3,16 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth, useSession } from '@clerk/nextjs';
 import { useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, Plus, Check, Circle, Target, Calendar, CalendarDays, AlertCircle } from 'lucide-react';
+import { Loader2, Trash2, Plus, Check, Target, Calendar, CalendarDays, AlertCircle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
-import { cn } from '@/lib/utils';
+
 
 export const dynamic = 'force-dynamic';
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"] });
 
 interface Task {
     id: string;
@@ -22,27 +17,36 @@ interface Task {
     created_at: string;
 }
 
+const ICONS = {
+    today: Calendar,
+    weekly: CalendarDays,
+    "long-term": Target,
+} as const;
+
+const CATEGORY_META = {
+    today: { title: "Today's Tasks", desc: "What needs to get done today?" },
+    weekly: { title: "Weekly Tasks", desc: "Your priorities for this week." },
+    "long-term": { title: "Long-Term Goals", desc: "Big picture objectives and milestones." },
+};
+
 export default function TasksPage() {
     const { userId, isLoaded } = useAuth();
+
     const { session } = useSession();
     const params = useParams();
     const category = params.category as string;
+
+    const meta = CATEGORY_META[category as keyof typeof CATEGORY_META] ?? {
+        title: "Tasks",
+        desc: "Manage your tasks.",
+    };
+    const Icon = ICONS[category as keyof typeof ICONS] ?? Target;
 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
-
-    // NEW: State for the delete confirmation modal
     const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-
-    const pageConfig = {
-        'today': { title: "Today's Tasks", desc: "What needs to get done today?", icon: Calendar, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
-        'weekly': { title: "Weekly Tasks", desc: "Your priorities for this week.", icon: CalendarDays, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-        'long-term': { title: "Long-Term Goals", desc: "Big picture objectives and milestones.", icon: Target, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-500/10" },
-    }[category] || { title: "Tasks", desc: "Manage your tasks.", icon: Target, color: "text-lime-600 dark:text-lime-400", bg: "bg-lime-100 dark:bg-lime-400/10" };
-
-    const Icon = pageConfig.icon;
 
     const createAuthenticatedClient = useCallback(async () => {
         const supabaseToken = await session?.getToken({ template: 'supabase' });
@@ -130,127 +134,144 @@ export default function TasksPage() {
             console.error('Error deleting task:', error);
             fetchTasks();
         } finally {
-            // Close the modal whether it succeeds or fails
             setTaskToDelete(null);
         }
     };
 
+    const done = tasks.filter((t) => t.completed).length;
+    const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-lime-500 dark:text-lime-400" />
+            <div className="flex h-full min-h-[50vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-ink-muted" />
             </div>
         );
     }
 
     return (
-        <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto relative">
-            <div className="mb-8 sm:mb-10 flex items-center gap-3 sm:gap-4">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 ${pageConfig.bg}`}>
-                    <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${pageConfig.color}`} />
+        <div className="mx-auto max-w-3xl p-5 sm:p-8 lg:p-10">
+            {/* Header */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-rule bg-paper-2 text-ember">
+                    <Icon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
-                    <h1 className={cn("text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-1 sm:mb-2", display.className)}>{pageConfig.title}</h1>
-                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">{pageConfig.desc}</p>
+                    <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.15em] text-ember-ink">
+                        {done} of {tasks.length} complete
+                    </p>
+                    <h1 className="truncate font-display text-2xl font-medium tracking-[-0.03em] sm:text-[2rem]">
+                        <span className="font-editorial italic">{meta.title}</span>
+                    </h1>
+                    <p className="mt-1 text-[13px] text-ink-soft">{meta.desc}</p>
                 </div>
             </div>
 
-            <form onSubmit={addTask} className="mb-8 sm:mb-10 relative">
-                <Input
+            {/* Progress Bar */}
+            <div className="mt-6 flex items-center gap-4">
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-paper-3">
+                    <div
+                        className="h-full rounded-full bg-ember transition-all duration-700 ease-out"
+                        style={{ width: `${pct}%` }}
+                    />
+                </div>
+                <span className="font-mono text-[11px] text-ink-muted">{pct}%</span>
+            </div>
+
+            {/* Add Task Form */}
+            <form onSubmit={addTask} className="relative mt-8">
+                <input
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Add a new task... (Press Enter to save)"
-                    className="h-12 sm:h-14 pl-4 sm:pl-5 pr-24 sm:pr-32 text-base sm:text-lg bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus-visible:ring-lime-400 rounded-2xl shadow-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+                    placeholder="What needs doing? (press Enter)"
                     disabled={adding}
+                    className="h-14 w-full rounded-2xl border border-rule bg-paper-2/50 px-5 pr-28 text-[15px] text-ink placeholder:text-ink-muted/70 outline-none transition-all focus:border-ember focus:bg-paper focus:ring-2 focus:ring-ember/15 disabled:opacity-50"
                 />
-                <Button
+                <button
                     type="submit"
                     disabled={!newTaskTitle.trim() || adding}
-                    className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 rounded-xl px-4 sm:px-6 font-medium"
+                    className="absolute right-2 top-2 bottom-2 inline-flex items-center gap-2 rounded-xl bg-ink px-4 text-[13px] font-medium text-paper transition-all hover:bg-ink-soft disabled:opacity-40"
                 >
-                    {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5 mr-1" />}
+                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     Add
-                </Button>
+                </button>
             </form>
 
-            <div className="space-y-3">
+            {/* Tasks List */}
+            <div className="mt-6 space-y-2">
                 {tasks.length === 0 ? (
-                    <div className="text-center py-16 text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                        No tasks here yet. Start typing above to add one!
+                    <div className="rounded-2xl border border-dashed border-rule px-6 py-12 text-center text-[13px] text-ink-muted">
+                        All clear. Start typing above to add a task.
                     </div>
                 ) : (
-                    tasks.map((task) => (
+                    tasks.map((t) => (
                         <div
-                            key={task.id}
-                            className={`group flex items-center justify-between p-4 bg-white dark:bg-slate-900/50 border rounded-2xl transition-all duration-200 ${task.completed
-                                ? 'border-slate-100 dark:border-slate-800/50 opacity-60'
-                                : 'border-slate-200 dark:border-slate-800 hover:border-lime-300 dark:hover:border-lime-400/30 hover:shadow-sm'
+                            key={t.id}
+                            className={`group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-xl border bg-paper px-4 py-3.5 transition-all ${t.completed
+                                ? "border-rule/60 opacity-60"
+                                : "border-rule hover:border-ember/40 hover:shadow-[0_8px_24px_-16px_rgba(28,25,23,0.18)]"
                                 }`}
                         >
-                            <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => toggleTask(task.id, task.completed)}>
-                                <button className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors shrink-0 ${task.completed
-                                    ? 'bg-lime-400 border-lime-400 text-slate-900'
-                                    : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-lime-400'
-                                    }`}>
-                                    {task.completed ? <Check className="w-4 h-4" /> : <Circle className="w-4 h-4 opacity-0" />}
-                                </button>
-
-                                <div className="flex flex-col">
-                                    <span className={`text-lg transition-all ${task.completed
-                                        ? 'line-through text-slate-400 dark:text-slate-500'
-                                        : 'text-slate-800 dark:text-slate-200'
-                                        }`}>
-                                        {task.title}
-                                    </span>
-                                    <span className={cn("text-xs mt-0.5", mono.className, task.completed ? 'text-slate-400/50 dark:text-slate-600' : 'text-slate-400 dark:text-slate-500')}>
-                                        Created {new Date(task.created_at).toLocaleString(undefined, {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: 'numeric',
-                                            minute: '2-digit'
-                                        })}
-                                    </span>
-                                </div>
+                            <button
+                                onClick={() => toggleTask(t.id, t.completed)}
+                                className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-all ${t.completed
+                                    ? "border-ember bg-ember text-paper"
+                                    : "border-rule hover:border-ember"
+                                    }`}
+                            >
+                                {t.completed && <Check className="h-3 w-3" strokeWidth={3} />}
+                            </button>
+                            <div className="min-w-0">
+                                <p
+                                    className={`truncate text-[14.5px] ${t.completed ? "text-ink-muted line-through" : "text-ink"
+                                        }`}
+                                >
+                                    {t.title}
+                                </p>
+                                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                                    {new Date(t.created_at).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                    })}
+                                </p>
                             </div>
                             <button
-                                onClick={() => setTaskToDelete(task.id)} // NEW: Opens the modal instead of deleting instantly
-                                className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
+                                onClick={() => setTaskToDelete(t.id)}
+                                className="rounded-lg p-2 text-ink-muted opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                             >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                             </button>
                         </div>
                     ))
                 )}
             </div>
 
-            {/* NEW: Custom Delete Confirmation Modal */}
+            {/* Delete Confirmation Modal */}
             {taskToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-4">
-                            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="w-full max-w-sm rounded-2xl border border-rule bg-paper p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                            <AlertCircle className="h-6 w-6" />
                         </div>
-                        <h3 className={cn("text-xl font-semibold text-slate-900 dark:text-white mb-2", display.className)}>
+                        <h3 className="mb-2 font-display text-xl font-medium tracking-tight text-ink">
                             Delete this task?
                         </h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                        <p className="mb-6 text-[14px] leading-relaxed text-ink-soft">
                             This action cannot be undone. This will permanently remove it from your list.
                         </p>
-                        <div className="flex items-center gap-3 w-full">
-                            <Button
-                                variant="outline"
-                                className="flex-1 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        <div className="flex items-center gap-3">
+                            <button
                                 onClick={() => setTaskToDelete(null)}
+                                className="flex-1 rounded-xl border border-rule bg-paper px-4 py-2.5 text-[13px] font-medium text-ink transition-colors hover:bg-paper-2"
                             >
                                 Cancel
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                            </button>
+                            <button
                                 onClick={() => confirmDeleteTask(taskToDelete)}
+                                className="flex-1 rounded-xl bg-destructive px-4 py-2.5 text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
                             >
                                 Delete Task
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -3,17 +3,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth, useSession } from '@clerk/nextjs';
 import { useRouter, useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { RichEditor } from '@/components/RichEditor';
-import { Loader2, Save, ArrowLeft } from 'lucide-react';
+// import { RichEditor } from "@/components/RichEditor"
+import { Loader2, Save, ArrowLeft, Check } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-import { toast } from "sonner"
-import { Space_Grotesk } from 'next/font/google';
-import { cn } from '@/lib/utils';
-export const dynamic = 'force-dynamic';
+import { toast } from "sonner";
+import { NotionStyleRichEditor } from '@/components/NotionStyleRichEditor';
 
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"] });
+
+
+
+export const dynamic = 'force-dynamic';
 
 interface Note {
     id: string;
@@ -67,8 +66,8 @@ export default function NoteEditorPage() {
             if (error) throw error;
             if (data) {
                 const note = data as Note;
-                setTitle(note.title);
-                setContent(note.content);
+                setTitle(note.title || '');
+                setContent(note.content || '');
             }
         } catch (error) {
             console.error('Error fetching note:', error);
@@ -145,7 +144,7 @@ export default function NoteEditorPage() {
             }
         } catch (error) {
             console.error('Error saving note:', error);
-            alert('Failed to save note');
+            toast('Failed to save note');
         } finally {
             setSaving(false);
         }
@@ -154,54 +153,32 @@ export default function NoteEditorPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-lime-500 dark:text-lime-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-ink-muted" />
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-slate-900">
-            <div className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 px-4 sm:px-6 py-3 sm:py-4">
-                <div className="flex items-center gap-2 sm:gap-4 max-w-4xl mx-auto w-full min-w-0">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
-                        onClick={() => router.push('/notes')}
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                    </Button>
-
-                    <Input
+        <div className="flex h-full flex-col bg-paper">
+            <header className="sticky top-0 z-10 border-b border-rule bg-paper/85 backdrop-blur-xl">
+                <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3 sm:px-6">
+                    <button onClick={() => router.push('/notes')} className="grid h-9 w-9 place-items-center rounded-lg border border-rule bg-paper text-ink-soft">
+                        <ArrowLeft className="h-4 w-4" />
+                    </button>
+                    <input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Untitled Note"
-                        className={cn("flex-1 min-w-0 text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 border-none focus-visible:ring-0 h-auto px-0 bg-transparent", display.className)}
+                        placeholder="Untitled note"
+                        className="flex-1 bg-transparent font-display text-xl font-semibold text-ink outline-none"
                     />
-
-                    <Button
-                        onClick={saveNote}
-                        disabled={saving}
-                        className="bg-slate-900 hover:bg-slate-800 text-lime-300 dark:bg-lime-300 dark:hover:bg-lime-200 dark:text-slate-900 shadow-sm gap-2 shrink-0 font-medium px-3 sm:px-4"
-                    >
-                        {saving ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span className="hidden sm:inline">Saving...</span>
-                            </>
-                        ) : (
-                            <>
-                                <Save className="w-4 h-4" />
-                                <span className="hidden sm:inline">Save Note</span>
-                            </>
-                        )}
-                    </Button>
+                    <button onClick={saveNote} disabled={saving} className="rounded-full bg-ink px-4 py-2 text-[12px] text-paper">
+                        {saving ? "Saving..." : "Save"}
+                    </button>
                 </div>
-            </div>
-
+            </header>
             <div className="flex-1 overflow-auto">
-                <div className="max-w-4xl mx-auto w-full h-full px-4 sm:px-6">
-                    <RichEditor value={content} onChange={setContent} />
+                <div className="mx-auto w-full max-w-4xl px-4 pt-8 pb-32">
+                    <NotionStyleRichEditor value={content} />
                 </div>
             </div>
         </div>
